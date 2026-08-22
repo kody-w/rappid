@@ -1,0 +1,29 @@
+{
+  "schema": "rapp-zoo-global-object/2.0",
+  "name": "Hello Cage",
+  "source_rappid": "rappid:@kody-w/hello-cage:37e536209f427e0f7b1575308b646a317ce203cdd4aa9050e952f1dbc11a6a19",
+  "created_utc": "2026-08-22T17:30:00.000Z",
+  "dimensions": [
+    {
+      "name": "handoff",
+      "url": "https://raw.githubusercontent.com/kody-w/rapp-zoo-v2/988f7144c26314ff5f66c9965ccb76c8f086cc65/examples/hello-cage/handoff.md",
+      "sha256": "34cfc9726af634fa8450c6358f66f72bd886d09338ecf5610c61a004b36dca65",
+      "bytes": 415,
+      "media_type": "text/markdown"
+    },
+    {
+      "name": "license",
+      "url": "https://raw.githubusercontent.com/kody-w/rapp-zoo-v2/988f7144c26314ff5f66c9965ccb76c8f086cc65/examples/hello-cage/LICENSE",
+      "sha256": "8cb9968a4537b8e8b18e1ae4b703ebb7e2f0ace4155c0a3bd18b726f44612977",
+      "bytes": 1081,
+      "media_type": "text/plain"
+    },
+    {
+      "name": "template",
+      "url": "https://raw.githubusercontent.com/kody-w/rapp-zoo-v2/988f7144c26314ff5f66c9965ccb76c8f086cc65/examples/hello-cage/template.json",
+      "sha256": "7fee94d47597c1f08a85d3834d923e7e79a17c96498e11e8757012d3f3683bd5",
+      "bytes": 485,
+      "media_type": "application/json"
+    }
+  ]
+}
