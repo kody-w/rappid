@@ -159,6 +159,24 @@ async function current(app) {
   return sendAutopilotCommand(app.autopilotFile, { command: "snapshot" });
 }
 
+async function runCli(args) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [
+      path.join(projectRoot, "bin", "rapp-zoo-v2.mjs"),
+      ...args,
+    ], {
+      cwd: projectRoot,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk) => { stdout += chunk; });
+    child.stderr.on("data", (chunk) => { stderr += chunk; });
+    child.once("error", reject);
+    child.once("exit", (code) => resolve({ code, stdout, stderr }));
+  });
+}
+
 test("installed Electron UI is fully drivable through its semantic virtual object", async (t) => {
   const root = mkdtempSync(path.join(os.tmpdir(), "rapp-zoo-e2e-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
@@ -214,6 +232,30 @@ test("installed Electron UI is fully drivable through its semantic virtual objec
   });
   assert.match(fixture.requests[0].idempotency_key, /^[0-9a-f-]{36}$/);
 
+  const machine = await runCli([
+    "machine",
+    RAPPID,
+    "AS400",
+    "library.create",
+    '{"name":"DEVLIB"}',
+    "--root",
+    root,
+    "--timeout",
+    "30000",
+  ]);
+  assert.equal(machine.code, 0, machine.stderr);
+  assert.match(
+    fixture.requests[1].user_input,
+    /^\|\|\|AS400\)\)\|\|\| \{"args":\{"name":"DEVLIB"\}/,
+  );
+  assert.equal(
+    JSON.parse(machine.stdout).transcript.some(
+      (message) => message.text.includes("fixture heard: |||AS400))|||"),
+    ),
+    true,
+  );
+
+  snapshot = await current(app);
   snapshot = await invoke(app, snapshot, "nav.handoff");
   snapshot = await input(
     app,
