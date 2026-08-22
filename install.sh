@@ -23,6 +23,7 @@ esac
 
 command -v node >/dev/null 2>&1 || fail "Node.js 24.19-26.x is required for this developer prototype"
 command -v npm >/dev/null 2>&1 || fail "npm 11.6+ is required"
+NODE_EXE="$(command -v node)"
 node -e '
   const major = Number(process.versions.node.split(".")[0]);
   if (major < 24 || major >= 27) process.exit(1);
@@ -93,7 +94,7 @@ if [ -e "$BACKUP" ]; then rm -rf -- "$BACKUP"; fi
 
 cat > "$BIN_DIR/rapp-zoo-v2" <<EOF
 #!/bin/sh
-exec node "$INSTALL_ROOT/bin/rapp-zoo-v2.mjs" "\$@"
+exec "$NODE_EXE" "$INSTALL_ROOT/bin/rapp-zoo-v2.mjs" "\$@"
 EOF
 chmod 755 "$BIN_DIR/rapp-zoo-v2"
 chmod 755 "$INSTALL_ROOT/bin/rapp-zoo-v2.mjs"
@@ -108,6 +109,36 @@ cat > "$INSTALL_ROOT/INSTALLATION.json" <<EOF
 }
 EOF
 chmod 600 "$INSTALL_ROOT/INSTALLATION.json"
+
+if [ "${RAPP_ZOO_AUTOSTART:-0}" = "1" ] && [ "$(uname -s)" = "Darwin" ]; then
+  LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
+  LAUNCH_AGENT="$LAUNCH_AGENTS/io.github.kody-w.rapp-zoo-v2.plist"
+  mkdir -p "$LAUNCH_AGENTS"
+  cat > "$LAUNCH_AGENT" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>io.github.kody-w.rapp-zoo-v2</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$BIN_DIR/rapp-zoo-v2</string>
+    <string>start</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>$HOME/Library/Logs/rapp-zoo-v2.log</string>
+  <key>StandardErrorPath</key>
+  <string>$HOME/Library/Logs/rapp-zoo-v2.log</string>
+</dict>
+</plist>
+EOF
+  chmod 600 "$LAUNCH_AGENT"
+  launchctl bootout "gui/$(id -u)" "$LAUNCH_AGENT" >/dev/null 2>&1 || true
+  launchctl bootstrap "gui/$(id -u)" "$LAUNCH_AGENT"
+fi
 
 trap - EXIT
 printf 'RAPP Zoo v2 installed.\n'

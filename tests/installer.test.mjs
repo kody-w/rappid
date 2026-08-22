@@ -15,6 +15,10 @@ test("installers resolve immutable public commits and stage atomically", () => {
   assert.match(shell, /mv "\$STAGE" "\$INSTALL_ROOT"/);
   assert.match(shell, /npm run test:unit/);
   assert.match(shell, /resolved_ref/);
+  assert.match(shell, /NODE_EXE="\$\(command -v node\)"/);
+  assert.match(shell, /exec "\$NODE_EXE"/);
+  assert.match(shell, /RAPP_ZOO_AUTOSTART/);
+  assert.match(shell, /io\.github\.kody-w\.rapp-zoo-v2\.plist/);
   assert.match(powershell, /commits\/\$RequestedRef/);
   assert.match(powershell, /\^\[0-9a-f\]\{40\}\$/);
   assert.match(powershell, /Move-Item \$Stage \$InstallRoot/);
