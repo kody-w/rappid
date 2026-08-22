@@ -1,0 +1,14 @@
+{
+  "schema": "rapp-zoo-prototype-template/2.0",
+  "name": "Hello Cage",
+  "stage": "prototype",
+  "non_production": true,
+  "default_protocol": "rapp/1",
+  "goal": "Prove that a globally published summon can enter a local RAPP cage, become a mutable prototype, and keep working offline.",
+  "synthetic_inputs": {
+    "greeting": "Hello from an immutable public template.",
+    "audience": "local developer"
+  },
+  "customer_data": "absent",
+  "factory": "any-capable-agent-factory"
+}

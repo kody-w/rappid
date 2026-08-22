@@ -1,0 +1,4 @@
+node_modules/
+proof/
+*.log
+.DS_Store

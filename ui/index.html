@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: file:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+  >
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RAPP Zoo v2</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">Z2</div>
+        <div>
+          <strong>RAPP Zoo v2</strong>
+          <span>Offline-first RAPP cage</span>
+        </div>
+      </div>
+      <nav aria-label="Zoo sections">
+        <button class="nav-item active" data-tab="neighborhoods" data-zoo-control="nav.neighborhoods">Neighborhoods</button>
+        <button class="nav-item" data-tab="global" data-zoo-control="nav.global">Global object</button>
+        <button class="nav-item" data-tab="drill" data-zoo-control="nav.drill">Local Drill</button>
+        <button class="nav-item" data-tab="library" data-zoo-control="nav.library">Approved library</button>
+        <button class="nav-item" data-tab="handoff" data-zoo-control="nav.handoff">Morning handoff</button>
+        <button class="nav-item" data-tab="children" data-zoo-control="nav.children">Child estates</button>
+      </nav>
+      <div class="sidebar-foot">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="estate-status">Starting locally...</span>
+      </div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">DATA-DEFINED / LOCAL-FIRST / MIT</p>
+          <h1 id="estate-name">RAPP Zoo v2</h1>
+          <p id="estate-rappid" class="mono subtle">Loading estate identity...</p>
+        </div>
+        <div class="top-actions">
+          <span id="neighborhood-count" class="pill">0 neighborhoods</span>
+          <span id="global-status" class="pill quiet">No global object</span>
+        </div>
+      </header>
+
+      <div id="notice" class="notice" role="status" aria-live="polite">Local estate starting.</div>
+
+      <section class="panel active" data-panel="neighborhoods">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">ONE ESTATE, MANY RESIDENTS</p>
+            <h2>Neighborhoods</h2>
+          </div>
+          <p>Attach an explicit local RAPP/1 endpoint. Nothing is scanned.</p>
+        </div>
+        <div class="two-column">
+          <div>
+            <form id="attach-form" class="card form-card">
+              <h3>Attach local neighborhood</h3>
+              <label>Display name
+                <input id="attach-name" data-zoo-control="attach.name" autocomplete="off" placeholder="Research">
+              </label>
+              <label>RAPPID
+                <input id="attach-rappid" data-zoo-control="attach.rappid" class="mono" autocomplete="off" placeholder="rappid:@owner/slug:64hex">
+              </label>
+              <label>Loopback origin
+                <input id="attach-url" data-zoo-control="attach.url" class="mono" autocomplete="off" placeholder="http://127.0.0.1:7071">
+              </label>
+              <button type="submit" class="primary" data-zoo-control="attach.submit">Attach resident</button>
+            </form>
+            <div id="neighborhood-list" class="card-list" aria-label="Attached neighborhoods"></div>
+          </div>
+          <div class="card chat-card">
+            <div class="chat-head">
+              <div>
+                <span class="eyebrow">EXACT RAPP/1 WIRE</span>
+                <h3 id="chat-title">Choose a resident</h3>
+              </div>
+              <button id="health-button" data-zoo-control="chat.health" disabled>Check health</button>
+            </div>
+            <div id="transcript" class="transcript" aria-live="polite"></div>
+            <form id="chat-form" class="composer">
+              <textarea id="chat-input" data-zoo-control="chat.input" rows="3" placeholder="Send one exact RAPP/1 turn" disabled></textarea>
+              <button type="submit" class="primary" data-zoo-control="chat.send" disabled>Send</button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" data-panel="global" hidden>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">IMMUTABLE GITHUB RAW USER DATA</p>
+            <h2>Global object</h2>
+          </div>
+          <p>Stream selected dimensions, verify every byte, then decide locally.</p>
+        </div>
+        <form id="global-form" class="card form-card wide">
+          <label>Commit-pinned manifest URL
+            <input id="global-url" data-zoo-control="global.url" class="mono" autocomplete="off" placeholder="https://raw.githubusercontent.com/owner/repo/40hex/manifest.json">
+          </label>
+          <label>Manifest SHA-256
+            <input id="global-hash" data-zoo-control="global.hash" class="mono" autocomplete="off" placeholder="64 lowercase hex">
+          </label>
+          <label>Dimensions (comma-separated; blank loads all)
+            <input id="global-dimensions" data-zoo-control="global.dimensions" autocomplete="off" placeholder="catalog, handoff, license">
+          </label>
+          <div class="button-row">
+            <button type="submit" class="primary" data-zoo-control="global.load">Load verified object</button>
+            <button type="button" id="global-save" data-zoo-control="global.save" disabled>Save as local summon</button>
+            <button type="button" id="monorepo-load" data-zoo-control="global.monorepo">Load monorepo companion</button>
+          </div>
+        </form>
+        <div id="global-object" class="card empty-state">No global object loaded.</div>
+        <div id="monorepo-object" class="card empty-state">The full RAPP organism is not loaded into the cage.</div>
+      </section>
+
+      <section class="panel" data-panel="drill" hidden>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">ZERO NETWORK / EASY LOOKUP</p>
+            <h2>Local Quantum Drill</h2>
+          </div>
+          <p>Only fully saved local summons are drillable.</p>
+        </div>
+        <form id="drill-form" class="card form-card wide">
+          <label>Dimension
+            <input id="drill-dimension" data-zoo-control="drill.dimension" autocomplete="off" value="frames">
+          </label>
+          <label>Optional exact SHA-256
+            <input id="drill-hash" data-zoo-control="drill.hash" class="mono" autocomplete="off" placeholder="Leave blank for every local match">
+          </label>
+          <button type="submit" class="primary" data-zoo-control="drill.lookup">Look up locally</button>
+        </form>
+        <div id="drill-result" class="card empty-state">No lookup run yet.</div>
+      </section>
+
+      <section class="panel" data-panel="library" hidden>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">LICENSED SUMMON TELEPHONE LINE</p>
+            <h2>Approved library</h2>
+          </div>
+          <p>MIT-first public candidates. Dial saves locally before use.</p>
+        </div>
+        <div id="library-list" class="card-list"></div>
+        <form id="prototype-form" class="card form-card wide">
+          <label>Approved summon alias
+            <input id="prototype-alias" data-zoo-control="prototype.alias" autocomplete="off" placeholder="weather">
+          </label>
+          <label>Prototype goal
+            <input id="prototype-goal" data-zoo-control="prototype.goal" autocomplete="off" placeholder="Prototype an agent team for...">
+          </label>
+          <label>Assumptions (one per line)
+            <textarea id="prototype-assumptions" data-zoo-control="prototype.assumptions" rows="4"></textarea>
+          </label>
+          <label>Acceptance criteria (one per line)
+            <textarea id="prototype-criteria" data-zoo-control="prototype.criteria" rows="4"></textarea>
+          </label>
+          <div class="button-row">
+            <button type="submit" class="primary" data-zoo-control="prototype.prepare">Prepare mutable prototype</button>
+            <button type="button" id="prototype-export" data-zoo-control="prototype.export" disabled>Export cross-device transfer</button>
+          </div>
+        </form>
+        <div id="prototype-status" class="card empty-state">No factory-neutral prototype prepared.</div>
+      </section>
+
+      <section class="panel" data-panel="handoff" hidden>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">OFFSHORE TO PRIMARY TEAM</p>
+            <h2>Morning handoff</h2>
+          </div>
+          <p>Print actions, evidence, blockers, and the exact continuation point.</p>
+        </div>
+        <div class="two-column">
+          <form id="report-form" class="card form-card">
+            <h3>Generate current handoff</h3>
+            <label>Exact handoff point
+              <textarea id="report-handoff" data-zoo-control="report.handoff" rows="5" placeholder="Continue from..."></textarea>
+            </label>
+            <label>Primary actions (one per line)
+              <textarea id="report-actions" data-zoo-control="report.actions" rows="5" placeholder="Run the real installed proof."></textarea>
+            </label>
+            <div class="button-row">
+              <button type="submit" class="primary" data-zoo-control="report.generate">Generate</button>
+              <button type="button" id="report-print" data-zoo-control="report.print" disabled>Print / preview</button>
+            </div>
+          </form>
+          <form id="schedule-form" class="card form-card">
+            <h3>Daily print convenience</h3>
+            <label class="check-label">
+              <input type="checkbox" id="schedule-enabled" data-zoo-control="report.schedule.enabled">
+              Enable one report per local day
+            </label>
+            <label>Local time
+              <input type="time" id="schedule-time" data-zoo-control="report.schedule.time" value="07:00">
+            </label>
+            <label>Printer system name
+              <input id="schedule-printer" data-zoo-control="report.schedule.printer" autocomplete="off" placeholder="EPSON_ET_3760_Series">
+            </label>
+            <button type="submit" data-zoo-control="report.schedule.save">Save schedule</button>
+            <p class="subtle">Printing is enabled only by this explicit setting.</p>
+          </form>
+        </div>
+        <div id="report-status" class="card empty-state">No report generated in this session.</div>
+      </section>
+
+      <section class="panel" data-panel="children" hidden>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">DETACH INTO ANOTHER DOCK CREATURE</p>
+            <h2>Child estates</h2>
+          </div>
+          <p>Fresh identity, home, user data, lineage, and capability lifecycle.</p>
+        </div>
+        <form id="child-form" class="card form-card wide">
+          <label>Child estate name
+            <input id="child-name" data-zoo-control="child.name" autocomplete="off" placeholder="Research Lab">
+          </label>
+          <button type="submit" class="primary" data-zoo-control="child.hatch">Hatch child estate</button>
+        </form>
+        <div id="child-list" class="card-list"></div>
+      </section>
+    </main>
+  </div>
+  <script type="module" src="./autopilot.js"></script>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

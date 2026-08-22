@@ -1,0 +1,68 @@
+{
+  "schema": "rapp-zoo-rapp1-authority/1.0",
+  "verified_at": "2026-08-22T16:31:00Z",
+  "monorepo": {
+    "repository": "kody-w/rapp-monorepo",
+    "commit": "ffd656b857722d82862051dc7097f0161812737f",
+    "manifest_schema": "rapp-monorepo/1.0",
+    "captured_at": "2026-08-22T08:50:36+00:00"
+  },
+  "standard_repository": {
+    "repository": "kody-w/rapp-1",
+    "snapshot_commit": "afc913ca3fe7dbc9da97871e67240f34416e5929",
+    "spec_commit": "d2cd5abed48d3f52b86bbb975ac3558286d1db41",
+    "path": "SPEC.md",
+    "revision": "rev-5",
+    "wire_tag": "rapp/1",
+    "bytes": 41952,
+    "sha256": "cea7847f98f9751734995f46fd4e1bde211c8eb9d03dbbb477934213865bb91a",
+    "monorepo_path": "repos/rapp-1/SPEC.md",
+    "live_and_snapshot_byte_identical": true
+  },
+  "measured_gates": {
+    "reference_vectors": {
+      "passed": 16,
+      "failed": 0
+    },
+    "rapp_core_tests": {
+      "passed": 113,
+      "failed": 0
+    },
+    "rapp_map_identity_vectors": {
+      "passed": 14,
+      "failed": 0,
+      "scope": "structural-only"
+    },
+    "spine_tests": {
+      "passed": 72,
+      "failed": 0
+    },
+    "spine_verifier": {
+      "passed_invariants": 12,
+      "failed_invariants": [
+        "I12_completion_receipt"
+      ]
+    }
+  },
+  "authority_drift": {
+    "kody-w/RAPP": {
+      "status": "not-yet-fully-rapp-1-conformant",
+      "pinned_spec_commit": "6723c7add2aed36bb68992fc71a56b0a4bd5ad81",
+      "pinned_spec_sha256": "6d06daba65d7c045716f3d6e95db8401ab58e727820e4114466d847f62cae49b"
+    },
+    "kody-w/rapp-map": {
+      "status": "structural-pin-only",
+      "pinned_spec_commit": "d2cd5abed48d3f52b86bbb975ac3558286d1db41",
+      "pinned_spec_sha256": "cea7847f98f9751734995f46fd4e1bde211c8eb9d03dbbb477934213865bb91a"
+    }
+  },
+  "claim_policy": {
+    "implementation_target": "full-conformance-for-implemented-surfaces",
+    "ecosystem_acceptance": "blocked-on-external-owner-evidence",
+    "must_not_infer": [
+      "authenticated section 13 registry acceptance",
+      "complete spine receipt",
+      "canonical rapp-estate/1.1 material"
+    ]
+  }
+}
