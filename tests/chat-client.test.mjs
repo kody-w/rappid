@@ -128,6 +128,7 @@ test("redirects, oversized bodies, and hanging endpoints are bounded", async (t)
       json(response, 200, "x".repeat(4096));
     }
   });
+
   const client = new RappChatClient({
     baseUrl,
     maxBytes: 1024,
@@ -138,4 +139,21 @@ test("redirects, oversized bodies, and hanging endpoints are bounded", async (t)
   await assert.rejects(() => client.chat({ user_input: "x" }), /1024-byte/);
   mode = "hang";
   await assert.rejects(() => client.chat({ user_input: "x" }), /timed out/);
+});
+
+test("invalid UTF-8 is refused instead of repaired into RAPP JSON", async (t) => {
+  const baseUrl = await server(t, (_request, response) => {
+    const prefix = Buffer.from('{"response":"');
+    const suffix = Buffer.from('","agent_logs":[],"session_id":"s"}');
+    const body = Buffer.concat([prefix, Buffer.from([0xff]), suffix]);
+    response.writeHead(200, {
+      "content-type": "application/json",
+      "content-length": String(body.length),
+    });
+    response.end(body);
+  });
+  await assert.rejects(
+    () => new RappChatClient({ baseUrl }).chat({ user_input: "x" }),
+    /invalid UTF-8/,
+  );
 });

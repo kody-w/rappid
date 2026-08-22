@@ -15,6 +15,10 @@ import {
   writePrivateJson,
 } from "./estate-store.mjs";
 import { parseIJson } from "./rapp1.mjs";
+import {
+  decodeUtf8,
+  readBoundedText,
+} from "./http.mjs";
 
 const MAX_CONTROL_BYTES = 2048;
 const TOKEN = /^[0-9a-f]{64}$/;
@@ -56,7 +60,13 @@ async function requestBody(request) {
         chunks.push(chunk);
       }
     });
-    request.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    request.on("end", () => {
+      try {
+        resolve(decodeUtf8(Buffer.concat(chunks), "Control request"));
+      } catch (error) {
+        reject(error);
+      }
+    });
     request.on("error", reject);
   });
 }
@@ -223,9 +233,7 @@ export async function requestInstanceControl(metadataFile, action, {
       .trim()
       .toLowerCase();
     if (mediaType !== "application/json") return false;
-    const body = await response.text();
-    if (Buffer.byteLength(body, "utf8") > MAX_CONTROL_BYTES) return false;
-    const result = parseIJson(body);
+    const result = parseIJson(await readBoundedText(response, MAX_CONTROL_BYTES));
     exactKeys(
       result,
       ["schema", "estate_id", "action", "accepted"],

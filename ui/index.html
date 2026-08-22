@@ -147,6 +147,45 @@
           </div>
           <p>MIT-first public candidates. Dial saves locally before use.</p>
         </div>
+        <form id="catalog-form" class="card form-card wide">
+          <label>Commit-pinned public summon line
+            <input id="catalog-url" data-zoo-control="library.catalog.url" class="mono" autocomplete="off">
+          </label>
+          <label>Catalog SHA-256
+            <input id="catalog-hash" data-zoo-control="library.catalog.hash" class="mono" autocomplete="off">
+          </label>
+          <button type="submit" data-zoo-control="library.catalog.import">Import approved catalog</button>
+        </form>
+        <form id="approve-form" class="card form-card wide">
+          <label>Alias
+            <input id="approve-alias" data-zoo-control="library.approve.alias" autocomplete="off" placeholder="hello-cage">
+          </label>
+          <label>Name
+            <input id="approve-name" data-zoo-control="library.approve.name" autocomplete="off" placeholder="Hello Cage">
+          </label>
+          <label>RAPPID
+            <input id="approve-rappid" data-zoo-control="library.approve.rappid" class="mono" autocomplete="off">
+          </label>
+          <label>Version
+            <input id="approve-version" data-zoo-control="library.approve.version" autocomplete="off" value="1.0.0">
+          </label>
+          <label>Saved object ID
+            <input id="approve-object" data-zoo-control="library.approve.object" class="mono" autocomplete="off" placeholder="sha256:...">
+          </label>
+          <label>Manifest URL
+            <input id="approve-manifest-url" data-zoo-control="library.approve.manifest-url" class="mono" autocomplete="off">
+          </label>
+          <label>Manifest SHA-256
+            <input id="approve-manifest-hash" data-zoo-control="library.approve.manifest-hash" class="mono" autocomplete="off">
+          </label>
+          <label>Commit-pinned license URL
+            <input id="approve-license-url" data-zoo-control="library.approve.license-url" class="mono" autocomplete="off">
+          </label>
+          <label>License SHA-256
+            <input id="approve-license-hash" data-zoo-control="library.approve.license-hash" class="mono" autocomplete="off">
+          </label>
+          <button type="submit" class="primary" data-zoo-control="library.approve.submit">Approve MIT summon locally</button>
+        </form>
         <div id="library-list" class="card-list"></div>
         <form id="prototype-form" class="card form-card wide">
           <label>Approved summon alias

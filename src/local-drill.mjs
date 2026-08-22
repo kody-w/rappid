@@ -123,10 +123,21 @@ export class LocalSummonStore {
 
   save(loadedGlobalObject) {
     const dimensions = Object.entries(loadedGlobalObject?.dimensions || {});
+    const declaredNames = loadedGlobalObject?.manifest?.dimensions
+      ?.map((entry) => entry.name)
+      .sort();
+    const loadedNames = dimensions.map(([name]) => name).sort();
     if (
       !loadedGlobalObject?.receipt
       || !SHA256.test(loadedGlobalObject.receipt.manifest_sha256)
       || dimensions.length === 0
+      || !Array.isArray(declaredNames)
+      || declaredNames.length !== loadedNames.length
+      || declaredNames.some((name, index) => name !== loadedNames[index])
+      || !Array.isArray(loadedGlobalObject.receipt.loaded_dimensions)
+      || loadedGlobalObject.receipt.loaded_dimensions.length !== loadedNames.length
+      || loadedGlobalObject.receipt.loaded_dimensions
+        .some((name, index) => name !== loadedNames[index])
     ) {
       throw new Error("Only a fully loaded verified global object can be saved.");
     }

@@ -33,6 +33,10 @@ function fixture(t) {
     receipt: {
       object_id: `sha256:${"f".repeat(64)}`,
       manifest_sha256: "f".repeat(64),
+      loaded_dimensions: ["template"],
+    },
+    manifest: {
+      dimensions: [{ name: "template" }],
     },
     dimensions: {
       template: {

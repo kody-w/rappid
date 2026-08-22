@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld("zoo", Object.freeze({
   loadMonorepo: invoke("zoo:monorepo-load"),
   drill: invoke("zoo:drill"),
   dial: invoke("zoo:library-dial"),
+  importCatalog: invoke("zoo:library-import"),
+  approveSummon: invoke("zoo:library-approve"),
   preparePrototype: invoke("zoo:prototype-prepare"),
   exportPrototype: invoke("zoo:prototype-export"),
   generateReport: invoke("zoo:report-generate"),

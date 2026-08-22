@@ -20,6 +20,13 @@ const mutants = [
     test: "tests/rapp1.test.mjs",
   },
   {
+    name: "jcs-proto-collision",
+    file: "src/rapp1.mjs",
+    from: "const result = Object.create(null);\n  for (const key of Object.keys(value).sort())",
+    to: "const result = {};\n  for (const key of Object.keys(value).sort())",
+    test: "tests/rapp1.test.mjs",
+  },
+  {
     name: "wire-extra-member",
     file: "src/rapp1.mjs",
     from: 'new Set(["user_input", "session_id", "idempotency_key"])',
@@ -37,6 +44,13 @@ const mutants = [
     name: "remote-drill-receipt",
     file: "src/local-drill.mjs",
     from: '|| /^https?:\\/\\//i.test(receiptFile)',
+    to: "|| false",
+    test: "tests/local-drill.test.mjs",
+  },
+  {
+    name: "partial-summon-save",
+    file: "src/local-drill.mjs",
+    from: "|| declaredNames.length !== loadedNames.length\n      || declaredNames.some((name, index) => name !== loadedNames[index])",
     to: "|| false",
     test: "tests/local-drill.test.mjs",
   },

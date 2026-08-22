@@ -19,6 +19,7 @@ import {
 
 export const PROTOTYPE_TRANSFER_SCHEMA = "rapp-zoo-prototype-transfer/2.0";
 const SHA256 = /^[0-9a-f]{64}$/;
+const MAX_TRANSFER_BYTES = 512 * 1024;
 
 function digest(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
@@ -60,6 +61,7 @@ export function exportPrototypeTransfer({
   }
   const files = [];
   const seen = new Set();
+  let totalBytes = 0;
   for (const input of handoff.inputs) {
     const relative = safeRelative(input.path);
     if (seen.has(relative)) throw new Error("Prototype transfer paths must be unique.");
@@ -73,6 +75,12 @@ export function exportPrototypeTransfer({
       throw new Error("Prototype transfer inputs must be regular files.");
     }
     const bytes = readFileSync(file);
+    totalBytes += bytes.length;
+    if (totalBytes > MAX_TRANSFER_BYTES) {
+      throw new Error(
+        `Prototype transfer inputs exceed the ${MAX_TRANSFER_BYTES}-byte prototype limit.`,
+      );
+    }
     files.push({
       path: relative,
       bytes: bytes.length,

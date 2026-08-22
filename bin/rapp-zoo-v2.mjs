@@ -132,46 +132,46 @@ async function start({ headless }) {
   throw new Error("RAPP Zoo v2 did not become autopilot-ready before the deadline.");
 }
 
+async function summon(chantText) {
+  const chant = parseSummonChant(chantText);
+  let snapshot = await semantic("snapshot");
+  snapshot = await semantic(
+    "invoke",
+    { control_id: "nav.global" },
+    snapshot.revision,
+  );
+  snapshot = await semantic(
+    "input",
+    { control_id: "global.url", value: chant.manifest_url },
+    snapshot.revision,
+  );
+  snapshot = await semantic(
+    "input",
+    { control_id: "global.hash", value: chant.manifest_sha256 },
+    snapshot.revision,
+  );
+  snapshot = await semantic(
+    "invoke",
+    { control_id: "global.load" },
+    snapshot.revision,
+  );
+  snapshot = await semantic(
+    "invoke",
+    { control_id: "global.save" },
+    snapshot.revision,
+  );
+  return {
+    chant,
+    cage: "local-saved-offline-ready",
+    object_id: snapshot.app_state.global_object.object_id,
+    local_summons: snapshot.app_state.local_summons,
+  };
+}
+
 async function workflow(file) {
   const document = parseIJson(readFileSync(path.resolve(file), "utf8"));
   if (!Array.isArray(document)) {
     throw new Error("Autopilot workflow must be a JSON array.");
-  }
-
-  async function summon(chantText) {
-    const chant = parseSummonChant(chantText);
-    let snapshot = await semantic("snapshot");
-    snapshot = await semantic(
-      "invoke",
-      { control_id: "nav.global" },
-      snapshot.revision,
-    );
-    snapshot = await semantic(
-      "input",
-      { control_id: "global.url", value: chant.manifest_url },
-      snapshot.revision,
-    );
-    snapshot = await semantic(
-      "input",
-      { control_id: "global.hash", value: chant.manifest_sha256 },
-      snapshot.revision,
-    );
-    snapshot = await semantic(
-      "invoke",
-      { control_id: "global.load" },
-      snapshot.revision,
-    );
-    snapshot = await semantic(
-      "invoke",
-      { control_id: "global.save" },
-      snapshot.revision,
-    );
-    return {
-      chant,
-      cage: "local-saved-offline-ready",
-      object_id: snapshot.app_state.global_object.object_id,
-      local_summons: snapshot.app_state.local_summons,
-    };
   }
   let snapshot = await semantic("snapshot");
   const results = [];

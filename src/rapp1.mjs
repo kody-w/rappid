@@ -42,31 +42,35 @@ function assertNoLoneSurrogates(value, label) {
   }
 }
 
-function decimalFraction(source) {
+function normalizedDecimal(source) {
   let token = source.toLowerCase();
-  let sign = 1n;
+  let sign = "";
   if (token.startsWith("-")) {
-    sign = -1n;
+    sign = "-";
     token = token.slice(1);
   }
   const [coefficient, exponentText = "0"] = token.split("e");
   const [whole, fraction = ""] = coefficient.split(".");
-  const digits = `${whole}${fraction}`;
-  const exponent = Number(exponentText) - fraction.length;
-  let numerator = sign * BigInt(digits);
-  let denominator = 1n;
-  if (exponent >= 0) {
-    numerator *= 10n ** BigInt(exponent);
-  } else {
-    denominator = 10n ** BigInt(-exponent);
+  const exponentSign = exponentText.startsWith("-") ? -1 : 1;
+  const exponentDigits = exponentText
+    .replace(/^[+-]/, "")
+    .replace(/^0+/, "") || "0";
+  if (exponentDigits.length > 4) {
+    throw new Error("JSON number exponent is outside the binary64 domain.");
   }
-  return { numerator, denominator };
+  let exponent = exponentSign * Number(exponentDigits) - fraction.length;
+  let digits = `${whole}${fraction}`.replace(/^0+/, "");
+  if (!digits) return "0";
+  const trailing = /0+$/.exec(digits)?.[0].length || 0;
+  if (trailing) {
+    digits = digits.slice(0, -trailing);
+    exponent += trailing;
+  }
+  return `${sign}${digits}e${exponent}`;
 }
 
 function mathematicallyEqual(left, right) {
-  const a = decimalFraction(left);
-  const b = decimalFraction(right);
-  return a.numerator * b.denominator === b.numerator * a.denominator;
+  return normalizedDecimal(left) === normalizedDecimal(right);
 }
 
 class IJsonParser {
@@ -253,7 +257,7 @@ function canonicalValue(value, depth = 1) {
   ) {
     throw new Error("RAPP canonicalization accepts only I-JSON values.");
   }
-  const result = {};
+  const result = Object.create(null);
   for (const key of Object.keys(value).sort()) {
     assertNoLoneSurrogates(key, "JSON member name");
     result[key] = canonicalValue(value[key], depth + 1);

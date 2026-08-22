@@ -70,7 +70,11 @@ export function createVirtualBrowserAutopilot({ getAppState }) {
         || element instanceof HTMLTextAreaElement
         || element instanceof HTMLSelectElement
       ) {
-        control.value = element.type === "password" ? null : element.value;
+        const value = element.type === "password" ? null : element.value;
+        control.value = typeof value === "string" && value.length > 4096
+          ? `${value.slice(0, 4096)}…`
+          : value;
+        control.value_truncated = typeof value === "string" && value.length > 4096;
       }
       if (element instanceof HTMLInputElement && element.type === "checkbox") {
         control.checked = element.checked;

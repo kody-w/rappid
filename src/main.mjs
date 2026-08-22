@@ -22,6 +22,7 @@ import { fileURLToPath } from "node:url";
 
 import { startAutopilotServer } from "./autopilot-server.mjs";
 import { RappChatClient } from "./chat-client.mjs";
+import { fetchPinnedCatalog } from "./catalog-client.mjs";
 import { ChildEstateManager } from "./child-estates.mjs";
 import { startControlServer } from "./control-server.mjs";
 import {
@@ -39,6 +40,7 @@ import {
   LocalQuantumDrill,
   LocalSummonStore,
 } from "./local-drill.mjs";
+import { KeyedQueue } from "./keyed-queue.mjs";
 import { PrototypeHandoffBuilder } from "./prototype-handoff.mjs";
 import {
   exportPrototypeTransfer,
@@ -163,6 +165,7 @@ let lastPrototype = null;
 let lastPrototypeTransfer = null;
 const health = {};
 const rendererCommands = new Map();
+const chatQueue = new KeyedQueue();
 let instanceLockDescriptor = null;
 
 function boot(event, detail = null) {
@@ -368,6 +371,7 @@ register("zoo:health", async (rappid) => {
 });
 
 register("zoo:chat", async (rappid, prompt) => {
+  return chatQueue.run(rappid, async () => {
   if (typeof prompt !== "string" || !prompt.trim() || prompt.length > 64 * 1024) {
     throw new Error("Chat prompt must be non-empty and bounded.");
   }
@@ -402,6 +406,7 @@ register("zoo:chat", async (rappid, prompt) => {
     evidence: [`session:${result.session_id}`, `agent_logs:${result.agent_logs.length}`],
   });
   return { response: result.response, session_id: result.session_id };
+  });
 });
 
 register("zoo:global-load", async (options) => {
@@ -427,25 +432,25 @@ register("zoo:global-save", async () => {
     summary: "Saved verified global object as a local summon.",
     evidence: [saved.receipt.object_id],
   });
-
-  register("zoo:monorepo-load", async () => {
-    monorepoCompanion = await monorepoLoader.load();
-    ledger.append({
-      action: "companion.load",
-      status: "completed",
-      summary: "Loaded the pinned monorepo companion body map into the local cage.",
-      evidence: [
-        monorepoCompanion.companion_id,
-        `dimensions:${monorepoCompanion.repository_count}`,
-        "execution:none",
-      ],
-    });
-    return {
-      companion_id: monorepoCompanion.companion_id,
-      repository_count: monorepoCompanion.repository_count,
-    };
-  });
   return { object_id: saved.receipt.object_id };
+});
+
+register("zoo:monorepo-load", async () => {
+  monorepoCompanion = await monorepoLoader.load();
+  ledger.append({
+    action: "companion.load",
+    status: "completed",
+    summary: "Loaded the pinned monorepo companion body map into the local cage.",
+    evidence: [
+      monorepoCompanion.companion_id,
+      `dimensions:${monorepoCompanion.repository_count}`,
+      "execution:none",
+    ],
+  });
+  return {
+    companion_id: monorepoCompanion.companion_id,
+    repository_count: monorepoCompanion.repository_count,
+  };
 });
 
 register("zoo:drill", async (query) => {
@@ -468,70 +473,124 @@ register("zoo:library-dial", async (alias) => {
     evidence: [result.entry.rappid, `source:${result.source}`],
   });
 
-  register("zoo:prototype-prepare", async ({
+  register("zoo:library-import", async ({ url, sha256 }) => {
+    const catalog = await fetchPinnedCatalog({ url, sha256 });
+    const entries = library.importCatalog(catalog);
+    ledger.append({
+      action: "summon.catalog-import",
+      status: "completed",
+      summary: `Imported ${entries.length} approved public summons.`,
+      evidence: [sha256, `entries:${entries.length}`],
+    });
+    return { entries: entries.length };
+  });
+  return { source: result.source, alias };
+});
+
+register("zoo:library-approve", async ({
+  alias,
+  rappid,
+  name,
+  version,
+  objectId,
+  manifestUrl,
+  manifestSha256,
+  licenseUrl,
+  licenseSha256,
+}) => {
+  const receiptFile = summonStore.receipts().find((candidate) => (
+    summonStore.open(candidate).receipt.object_id === objectId
+  ));
+  if (!receiptFile) {
+    throw new Error("Approved summon must name a fully saved local object ID.");
+  }
+  const entry = library.approve({
     alias,
+    rappid,
+    name,
+    version,
+    spdx: "MIT",
+    licenseUrl,
+    licenseSha256,
+    manifestUrl,
+    manifestSha256,
+    receiptFile,
+  });
+  ledger.append({
+    action: "summon.approve",
+    status: "decision",
+    summary: `Approved MIT summon ${entry.alias} for public-line use.`,
+    evidence: [
+      entry.rappid,
+      entry.manifest.sha256,
+      entry.license.sha256,
+    ],
+  });
+  return { alias: entry.alias, rappid: entry.rappid };
+});
+
+register("zoo:prototype-prepare", async ({
+  alias,
+  goal,
+  assumptions,
+  acceptanceCriteria,
+}) => {
+  const dialed = await library.dial(alias, { globalLoader });
+  const approvedEntry = library.list().find((entry) => entry.alias === alias);
+  if (!approvedEntry?.local_receipt) {
+    throw new Error("Approved summon did not produce a local receipt.");
+  }
+  lastPrototype = prototypeBuilder.prepare({
+    receiptFile: approvedEntry.local_receipt.receipt_file,
+    approvedEntry,
     goal,
     assumptions,
     acceptanceCriteria,
-  }) => {
-    const dialed = await library.dial(alias, { globalLoader });
-    const approvedEntry = library.list().find((entry) => entry.alias === alias);
-    if (!approvedEntry?.local_receipt) {
-      throw new Error("Approved summon did not produce a local receipt.");
-    }
-    lastPrototype = prototypeBuilder.prepare({
-      receiptFile: approvedEntry.local_receipt.receipt_file,
-      approvedEntry,
-      goal,
-      assumptions,
-      acceptanceCriteria,
-    });
-    lastPrototypeTransfer = null;
-    ledger.append({
-      action: "prototype.prepare",
-      status: "completed",
-      summary: `Prepared mutable non-production prototype from ${alias}.`,
-      evidence: [
-        lastPrototype.handoff.handoff_id,
-        approvedEntry.rappid,
-        `source:${dialed.source}`,
-      ],
-    });
-    return {
-      handoff_id: lastPrototype.handoff.handoff_id,
-      non_production: true,
-    };
   });
+  lastPrototypeTransfer = null;
+  ledger.append({
+    action: "prototype.prepare",
+    status: "completed",
+    summary: `Prepared mutable non-production prototype from ${alias}.`,
+    evidence: [
+      lastPrototype.handoff.handoff_id,
+      approvedEntry.rappid,
+      `source:${dialed.source}`,
+    ],
+  });
+  return {
+    handoff_id: lastPrototype.handoff.handoff_id,
+    non_production: true,
+  };
+});
 
-  register("zoo:prototype-export", async () => {
-    if (!lastPrototype) throw new Error("Prepare a prototype first.");
-    const directory = ensurePrivateDirectory(
-      path.join(store.estateHome, "transfers"),
-    );
-    lastPrototypeTransfer = path.join(
-      directory,
-      `${lastPrototype.handoff.handoff_id}.rapp-prototype.json`,
-    );
-    const transfer = exportPrototypeTransfer({
-      handoffFile: lastPrototype.handoffFile,
-      outputFile: lastPrototypeTransfer,
-    });
-    ledger.append({
-      action: "prototype.export",
-      status: "completed",
-      summary: "Exported cross-device prototype data without runtime authority.",
-      evidence: [
-        transfer.transfer_hash,
-        "federation_ready:false",
-      ],
-    });
-    return {
-      transfer_file: lastPrototypeTransfer,
-      transfer_hash: transfer.transfer_hash,
-      federation_ready: false,
-    };
+register("zoo:prototype-export", async () => {
+  if (!lastPrototype) throw new Error("Prepare a prototype first.");
+  const directory = ensurePrivateDirectory(
+    path.join(store.estateHome, "transfers"),
+  );
+  lastPrototypeTransfer = path.join(
+    directory,
+    `${lastPrototype.handoff.handoff_id}.rapp-prototype.json`,
+  );
+  const transfer = exportPrototypeTransfer({
+    handoffFile: lastPrototype.handoffFile,
+    outputFile: lastPrototypeTransfer,
   });
-  return { source: result.source, alias };
+  ledger.append({
+    action: "prototype.export",
+    status: "completed",
+    summary: "Exported cross-device prototype data without runtime authority.",
+    evidence: [
+      transfer.transfer_hash,
+      "federation_ready:false",
+    ],
+  });
+  return {
+    transfer_file: lastPrototypeTransfer,
+    transfer_hash: transfer.transfer_hash,
+    federation_ready: false,
+  };
 });
 
 register("zoo:report-generate", async ({

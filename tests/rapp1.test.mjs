@@ -39,6 +39,12 @@ test("RAPP/1 keyless identity uses raw UUIDv4 octets and a literal vector", () =
 
 test("RAPP/1 canonicalization and domain separation match literal vectors", () => {
   assert.equal(canonical({ b: 2, a: 1 }), '{"a":1,"b":2}');
+  const hostile = JSON.parse('{"__proto__":{"x":1}}');
+  assert.equal(canonical(hostile), '{"__proto__":{"x":1}}');
+  assert.notEqual(
+    H("rapp/1:particle", hostile),
+    H("rapp/1:particle", {}),
+  );
   assert.equal(
     H("rapp/1:particle", { b: 2, a: 1 }),
     "bd48cf9ef340c0bd7d5c84cef1c64ee11c329d699606729316e227b45307a0cf",
@@ -58,6 +64,10 @@ test("strict I-JSON parsing refuses split-hash input domains", () => {
   assert.throws(() => parseIJson('{"value":9007199254740993}'), /binary64/);
   assert.throws(() => parseIJson('{"value":0.10000000000000001}'), /binary64/);
   assert.throws(() => parseIJson('{"value":1e999}'), /binary64/);
+  assert.throws(
+    () => parseIJson('{"value":1e-10000000}'),
+    /binary64|exponent/,
+  );
 
   const tooDeep = `${"[".repeat(65)}0${"]".repeat(65)}`;
   assert.throws(() => parseIJson(tooDeep), /nesting/);

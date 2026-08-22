@@ -28,8 +28,8 @@ const COMMIT = /^[0-9a-f]{40}$/;
 const SHA256 = /^[0-9a-f]{64}$/;
 const NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const MAX_MANIFEST_BYTES = 256 * 1024;
-const MAX_DIMENSION_BYTES = 16 * 1024 * 1024;
-const MAX_TOTAL_BYTES = 32 * 1024 * 1024;
+const MAX_DIMENSION_BYTES = 512 * 1024;
+const MAX_TOTAL_BYTES = 512 * 1024;
 const MEDIA_TYPES = new Set([
   "application/json",
   "text/plain",

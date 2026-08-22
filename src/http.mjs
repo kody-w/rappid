@@ -26,7 +26,7 @@ export async function readBoundedBytes(response, maxBytes) {
 }
 
 export async function readBoundedText(response, maxBytes) {
-  return (await readBoundedBytes(response, maxBytes)).toString("utf8");
+  return decodeUtf8(await readBoundedBytes(response, maxBytes), "Response");
 }
 
 export function responseMediaType(response) {
@@ -63,5 +63,14 @@ export async function withTimeout(timeoutMs, operation, label = "Endpoint") {
     throw error;
   } finally {
     clearTimeout(timer);
+  }
+}
+import { TextDecoder } from "node:util";
+
+export function decodeUtf8(bytes, label = "UTF-8 input") {
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    throw new Error(`${label} contains invalid UTF-8.`);
   }
 }

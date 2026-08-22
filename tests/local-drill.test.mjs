@@ -31,6 +31,10 @@ function fixture(t) {
     receipt: {
       object_id: `sha256:${"f".repeat(64)}`,
       manifest_sha256: "f".repeat(64),
+      loaded_dimensions: ["frames"],
+    },
+    manifest: {
+      dimensions: [{ name: "frames" }],
     },
     dimensions: {
       frames: {
@@ -106,5 +110,21 @@ test("lookup has no network input or fallback surface", (t) => {
       url: "https://example.com",
     }),
     /digest is invalid/,
+  );
+});
+
+test("a selected-dimension projection cannot become or downgrade a local summon", (t) => {
+  const { loaded, store } = fixture(t);
+  const complete = store.save(loaded);
+  const partial = structuredClone(loaded);
+  partial.manifest.dimensions.push({ name: "license" });
+  assert.throws(
+    () => store.save(partial),
+    /fully loaded verified global object/,
+  );
+  assert.deepEqual(
+    store.open(complete.receiptFile).receipt.dimensions.map((entry) => entry.name),
+    ["frames"],
+    "the existing complete receipt remains intact",
   );
 });

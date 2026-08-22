@@ -12,6 +12,7 @@ if ($nodeMajor -lt 24 -or $nodeMajor -ge 27) {
 }
 
 $Stage = "$InstallRoot.stage.$PID"
+$Backup = $null
 if (Test-Path $Stage) { throw "Staging path already exists: $Stage" }
 New-Item -ItemType Directory -Force -Path $Stage | Out-Null
 
@@ -50,13 +51,25 @@ try {
 
   $Backup = "$InstallRoot.previous.$PID"
   if (Test-Path $InstallRoot) { Move-Item $InstallRoot $Backup }
-  Move-Item $Stage $InstallRoot
-  if (Test-Path $Backup) { Remove-Item $Backup -Recurse -Force }
-  New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
-  @"
+  try {
+    Move-Item $Stage $InstallRoot
+    New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
+    @"
 @echo off
 node "$InstallRoot\bin\rapp-zoo-v2.mjs" %*
 "@ | Set-Content -Encoding ASCII (Join-Path $BinDir "rapp-zoo-v2.cmd")
+    if (-not (Test-Path (Join-Path $InstallRoot "package.json")) -or
+        -not (Test-Path (Join-Path $BinDir "rapp-zoo-v2.cmd"))) {
+      throw "Installed app or launcher validation failed."
+    }
+  } catch {
+    if (Test-Path $InstallRoot) { Remove-Item $InstallRoot -Recurse -Force }
+    if ($Backup -and (Test-Path $Backup)) {
+      Move-Item $Backup $InstallRoot
+    }
+    throw
+  }
+  if ($Backup -and (Test-Path $Backup)) { Remove-Item $Backup -Recurse -Force }
   Write-Host "RAPP Zoo v2 installed. Run: rapp-zoo-v2 start"
 } finally {
   if (Test-Path $Stage) { Remove-Item $Stage -Recurse -Force }

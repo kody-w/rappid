@@ -24,6 +24,7 @@ import {
   parseIJson,
   validateRappid,
 } from "./rapp1.mjs";
+import { decodeUtf8 } from "./http.mjs";
 
 export const CLAIMS_SCHEMA = "rapp-zoo-claims/2.0";
 export const TRANSACTION_SCHEMA = "rapp-zoo-membership-transaction/2.0";
@@ -77,7 +78,7 @@ function readJson(file, label) {
   if (!stats.isFile() || stats.isSymbolicLink()) {
     throw new Error(`${label} must be a regular file.`);
   }
-  return parseIJson(readFileSync(file, "utf8"));
+  return parseIJson(decodeUtf8(readFileSync(file), label));
 }
 
 export {

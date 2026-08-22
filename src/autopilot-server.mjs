@@ -13,6 +13,7 @@ import {
   writePrivateJson,
 } from "./estate-store.mjs";
 import {
+  decodeUtf8,
   readBoundedText,
   requireJsonMediaType,
   withTimeout,
@@ -24,6 +25,7 @@ export const AUTOPILOT_COMMAND_SCHEMA = "rapp-zoo-autopilot-command/2.0";
 export const AUTOPILOT_RESULT_SCHEMA = "rapp-zoo-autopilot-result/2.0";
 const TOKEN = /^[0-9a-f]{64}$/;
 const MAX_COMMAND_BYTES = 64 * 1024;
+const MAX_RESPONSE_BYTES = 1024 * 1024;
 const COMMANDS = new Set(["snapshot", "invoke", "input", "wait", "screenshot"]);
 
 function exactKeys(value, expected, label) {
@@ -63,7 +65,13 @@ async function body(request) {
         chunks.push(chunk);
       }
     });
-    request.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    request.on("end", () => {
+      try {
+        resolve(decodeUtf8(Buffer.concat(chunks), "Autopilot command"));
+      } catch (error) {
+        reject(error);
+      }
+    });
     request.on("error", reject);
   });
 }
@@ -289,7 +297,7 @@ export async function sendAutopilotCommand(metadataFile, {
       body: JSON.stringify(payload),
     });
     requireJsonMediaType(response, "Autopilot endpoint");
-    const result = parseIJson(await readBoundedText(response, MAX_COMMAND_BYTES));
+    const result = parseIJson(await readBoundedText(response, MAX_RESPONSE_BYTES));
     if (response.status === 409) {
       const error = new Error(result.detail || "Autopilot screen revision is stale.");
       error.code = "STALE_REVISION";

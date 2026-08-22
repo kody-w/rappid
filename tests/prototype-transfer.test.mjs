@@ -95,6 +95,7 @@ test("transfer tampering and conflicting local import fail closed", (t) => {
     handoffFile: f.handoffFile,
     outputFile: output,
   });
+
   const value = JSON.parse(readFileSync(output, "utf8"));
   value.files[0].content_base64 = Buffer.from("tampered").toString("base64");
   assert.throws(() => validatePrototypeTransfer(value), /integrity|byte\/hash/);
@@ -111,5 +112,17 @@ test("transfer tampering and conflicting local import fail closed", (t) => {
       estateHome: destination,
     }),
     /conflicts/,
+  );
+});
+
+test("prototype mutation cannot silently outgrow the portable transfer profile", (t) => {
+  const f = fixture(t);
+  writeFileSync(f.input, Buffer.alloc(512 * 1024 + 1, 0x61));
+  assert.throws(
+    () => exportPrototypeTransfer({
+      handoffFile: f.handoffFile,
+      outputFile: path.join(f.root, "too-large.json"),
+    }),
+    /prototype limit/,
   );
 });

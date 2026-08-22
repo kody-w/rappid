@@ -18,6 +18,8 @@ test("installers resolve immutable public commits and stage atomically", () => {
   assert.match(powershell, /commits\/\$RequestedRef/);
   assert.match(powershell, /\^\[0-9a-f\]\{40\}\$/);
   assert.match(powershell, /Move-Item \$Stage \$InstallRoot/);
+  assert.match(powershell, /Move-Item \$Backup \$InstallRoot/);
+  assert.match(powershell, /Installed app or launcher validation failed/);
   assert.match(powershell, /npm run test:unit/);
 });
 

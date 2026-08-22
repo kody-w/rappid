@@ -109,6 +109,7 @@ test("tokenless calls cannot inspect the virtual browser", async (t) => {
     token: TOKEN,
     execute: async () => { executed += 1; },
   });
+
   t.after(() => server.close());
   const response = await fetch(server.metadata.endpoint, {
     method: "POST",
@@ -123,4 +124,23 @@ test("tokenless calls cannot inspect the virtual browser", async (t) => {
   });
   assert.equal(response.status, 403);
   assert.equal(executed, 0);
+});
+
+test("semantic responses have a separate bounded budget from commands", async (t) => {
+  const home = mkdtempSync(path.join(os.tmpdir(), "rapp-zoo-response-"));
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  const payload = "x".repeat(100 * 1024);
+  const server = await startAutopilotServer({
+    estateHome: home,
+    estateId: ESTATE,
+    token: TOKEN,
+    execute: async () => ({ payload }),
+  });
+  t.after(() => server.close());
+  assert.equal(
+    (await sendAutopilotCommand(server.metadataFile, {
+      command: "snapshot",
+    })).payload.length,
+    payload.length,
+  );
 });

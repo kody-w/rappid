@@ -19,6 +19,7 @@ let state = {
 let activeTab = "neighborhoods";
 let autopilot;
 let pendingActions = 0;
+let chatBusy = false;
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -50,6 +51,62 @@ async function action(working, operation, success = "Done.") {
 
 function tail(value, count = 8) {
   return String(value || "").slice(-count);
+}
+
+function clip(value, max = 4096) {
+  return typeof value === "string" && value.length > max
+    ? `${value.slice(0, max)}…`
+    : value;
+}
+
+function semanticAppState(source) {
+  const semantic = structuredClone(source);
+  semantic.transcript_meta = {};
+  semantic.transcripts = Object.fromEntries(
+    Object.entries(source.transcripts || {}).map(([rappid, messages]) => {
+      semantic.transcript_meta[rappid] = {
+        message_count: messages.length,
+        omitted: Math.max(0, messages.length - 20),
+      };
+      return [
+        rappid,
+        messages.slice(-20).map((message) => ({
+          ...message,
+          text: clip(message.text),
+        })),
+      ];
+    }),
+  );
+  if (semantic.global_object?.dimensions) {
+    for (const dimension of Object.values(semantic.global_object.dimensions)) {
+      if (typeof dimension.value === "string") {
+        dimension.value = clip(dimension.value, 16 * 1024);
+      } else if (
+        dimension.value !== null
+        && JSON.stringify(dimension.value).length > 16 * 1024
+      ) {
+        dimension.value = {
+          omitted_from_semantic_snapshot: true,
+          reason: "value exceeds 16 KiB; inspect through the visible dimension card",
+        };
+      }
+    }
+  }
+  if (semantic.report?.last) {
+    const report = semantic.report.last;
+    semantic.report.last = {
+      schema: report.schema,
+      estate_id: report.estate_id,
+      generated_utc: report.generated_utc,
+      period_start_utc: report.period_start_utc,
+      period_end_utc: report.period_end_utc,
+      summary: report.summary,
+      handoff_point: clip(report.handoff_point),
+      primary_actions: report.primary_actions.slice(0, 20).map((entry) => clip(entry)),
+      detailed_records_omitted: report.summary.operation_count,
+    };
+  }
+  return semantic;
 }
 
 function element(tag, {
@@ -420,15 +477,24 @@ $("#health-button").addEventListener("click", () => action(
 
 $("#chat-form").addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (chatBusy) return;
   const input = $("#chat-input");
   const prompt = input.value;
   if (!prompt.trim()) return;
   input.value = "";
-  await action(
-    "Sending exact RAPP/1 turn...",
-    () => window.zoo.chat(state.selected_neighborhood, prompt),
-    "Turn completed.",
-  );
+  chatBusy = true;
+  input.disabled = true;
+  $('[data-zoo-control="chat.send"]').disabled = true;
+  try {
+    await action(
+      "Sending exact RAPP/1 turn...",
+      () => window.zoo.chat(state.selected_neighborhood, prompt),
+      "Turn completed.",
+    );
+  } finally {
+    chatBusy = false;
+    renderNeighborhoods();
+  }
 });
 
 $("#global-form").addEventListener("submit", async (event) => {
@@ -469,6 +535,37 @@ $("#drill-form").addEventListener("submit", async (event) => {
       sha256: $("#drill-hash").value || null,
     }),
     (result) => `${result.matches.length} local match${result.matches.length === 1 ? "" : "es"}.`,
+  );
+});
+
+$("#approve-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await action(
+    "Verifying local receipt and MIT license evidence...",
+    () => window.zoo.approveSummon({
+      alias: $("#approve-alias").value,
+      rappid: $("#approve-rappid").value,
+      name: $("#approve-name").value,
+      version: $("#approve-version").value,
+      objectId: $("#approve-object").value,
+      manifestUrl: $("#approve-manifest-url").value,
+      manifestSha256: $("#approve-manifest-hash").value,
+      licenseUrl: $("#approve-license-url").value,
+      licenseSha256: $("#approve-license-hash").value,
+    }),
+    "Summon approved for the public telephone-line model.",
+  );
+});
+
+$("#catalog-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await action(
+    "Fetching and verifying the immutable summon line...",
+    () => window.zoo.importCatalog({
+      url: $("#catalog-url").value,
+      sha256: $("#catalog-hash").value,
+    }),
+    "Approved public catalog imported.",
   );
 });
 
@@ -539,7 +636,9 @@ $("#child-form").addEventListener("submit", async (event) => {
   );
 });
 
-autopilot = createVirtualBrowserAutopilot({ getAppState: () => state });
+autopilot = createVirtualBrowserAutopilot({
+  getAppState: () => semanticAppState(state),
+});
 window.zoo.onAutopilotCommand((command) => autopilot.handle(command));
 window.zoo.onState((next) => {
   state = next;

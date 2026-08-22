@@ -41,6 +41,10 @@ function fixture(t) {
     receipt: {
       object_id: `sha256:${MANIFEST_SHA}`,
       manifest_sha256: MANIFEST_SHA,
+      loaded_dimensions: ["frames", "license"],
+    },
+    manifest: {
+      dimensions: [{ name: "frames" }, { name: "license" }],
     },
     dimensions: {
       license: {
