@@ -17,9 +17,9 @@ const FORBIDDEN_KEYS = new Set([
   "secret",
 ]);
 
-function inspectKeys(value) {
+export function assertUnprivilegedMachineValue(value) {
   if (Array.isArray(value)) {
-    value.forEach(inspectKeys);
+    value.forEach(assertUnprivilegedMachineValue);
     return;
   }
   if (!value || typeof value !== "object") return;
@@ -27,7 +27,7 @@ function inspectKeys(value) {
     if (FORBIDDEN_KEYS.has(key.toLowerCase())) {
       throw new Error(`Machine command refuses privileged key ${key}.`);
     }
-    inspectKeys(child);
+    assertUnprivilegedMachineValue(child);
   }
 }
 
@@ -65,7 +65,7 @@ export function buildMachineCommand({
   if (!Number.isSafeInteger(turnBudget) || turnBudget < 1 || turnBudget > 32) {
     throw new Error("Machine command turn budget must be 1-32.");
   }
-  inspectKeys(args);
+  assertUnprivilegedMachineValue(args);
   const envelope = {
     schema: MACHINE_COMMAND_SCHEMA,
     op,
@@ -92,7 +92,7 @@ export function parseMachineEnvelope(value) {
   if (!envelope || typeof envelope !== "object" || Array.isArray(envelope)) {
     throw new Error("Machine envelope body must be an object.");
   }
-  inspectKeys(envelope);
+  assertUnprivilegedMachineValue(envelope);
   if (!eventMarker) {
     if (
       envelope.schema !== MACHINE_COMMAND_SCHEMA
@@ -143,7 +143,7 @@ export function buildMachineEvent({
   if (!Number.isSafeInteger(chainDepth) || chainDepth < 0 || chainDepth > 8) {
     throw new Error("Machine event chain depth must be 0-8.");
   }
-  inspectKeys(payload);
+  assertUnprivilegedMachineValue(payload);
   return `${sigil(machine, true)} ${canonical({
     schema: MACHINE_EVENT_SCHEMA,
     kind,

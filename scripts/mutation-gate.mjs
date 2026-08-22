@@ -96,6 +96,13 @@ const mutants = [
     to: "export function validateAutopilotCommand(value) {\n  return value;\n",
     test: "tests/autopilot-server.test.mjs",
   },
+  {
+    name: "deterministic-majority-pass",
+    file: "src/simulation-neighborhood.mjs",
+    from: "? leader.replicas.length === plan.replicas",
+    to: "? leader.replicas.length >= Math.ceil(plan.replicas * 0.94)",
+    test: "tests/simulation-neighborhood.test.mjs",
+  },
 ];
 
 const results = [];

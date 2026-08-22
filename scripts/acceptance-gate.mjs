@@ -44,6 +44,7 @@ for (const required of [
   "src/summon-library.mjs",
   "src/summon-chant.mjs",
   "src/virtual-computer.mjs",
+  "src/simulation-neighborhood.mjs",
   "src/prototype-handoff.mjs",
   "src/prototype-transfer.mjs",
   "src/monorepo-companion.mjs",
