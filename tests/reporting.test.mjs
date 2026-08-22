@@ -138,18 +138,14 @@ test("daily print configuration is explicit and computes the next local run", ()
     printer_name: "EPSON_ET_3760_Series",
     last_printed_date: null,
   });
-  assert.equal(
-    nextLocalReportAt(
-      new Date("2026-08-22T06:30:00-04:00"),
-      "07:00",
-    ).toISOString(),
-    "2026-08-22T11:00:00.000Z",
+  const before = nextLocalReportAt(new Date(2026, 7, 22, 6, 30), "07:00");
+  assert.deepEqual(
+    [before.getFullYear(), before.getMonth(), before.getDate(), before.getHours(), before.getMinutes()],
+    [2026, 7, 22, 7, 0],
   );
-  assert.equal(
-    nextLocalReportAt(
-      new Date("2026-08-22T08:00:00-04:00"),
-      "07:00",
-    ).toISOString(),
-    "2026-08-23T11:00:00.000Z",
+  const after = nextLocalReportAt(new Date(2026, 7, 22, 8, 0), "07:00");
+  assert.deepEqual(
+    [after.getFullYear(), after.getMonth(), after.getDate(), after.getHours(), after.getMinutes()],
+    [2026, 7, 23, 7, 0],
   );
 });
