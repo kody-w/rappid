@@ -13,6 +13,7 @@ import { sendAutopilotCommand } from "../src/autopilot-server.mjs";
 import { requestInstanceControl } from "../src/control-server.mjs";
 import { parseIJson } from "../src/rapp1.mjs";
 import { parseSummonChant } from "../src/summon-chant.mjs";
+import { buildMachineCommand } from "../src/virtual-computer.mjs";
 
 const packageDir = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -168,6 +169,44 @@ async function summon(chantText) {
   };
 }
 
+async function machineChat(rappid, machine, op, rawArgs = "{}") {
+  const args = parseIJson(rawArgs);
+  const prompt = buildMachineCommand({
+    machine,
+    op,
+    args,
+    idempotencyKey: `cli-${Date.now()}`,
+    turnBudget: 1,
+  });
+  let snapshot = await semantic("snapshot");
+  snapshot = await semantic(
+    "invoke",
+    { control_id: "nav.neighborhoods" },
+    snapshot.revision,
+  );
+  snapshot = await semantic(
+    "invoke",
+    { control_id: `neighborhood.select.${rappid.slice(-8)}` },
+    snapshot.revision,
+  );
+  snapshot = await semantic(
+    "input",
+    { control_id: "chat.input", value: prompt },
+    snapshot.revision,
+  );
+  snapshot = await semantic(
+    "invoke",
+    { control_id: "chat.send" },
+    snapshot.revision,
+  );
+  return {
+    machine,
+    op,
+    resident: rappid,
+    transcript: snapshot.app_state.transcripts[rappid] || [],
+  };
+}
+
 async function workflow(file) {
   const document = parseIJson(readFileSync(path.resolve(file), "utf8"));
   if (!Array.isArray(document)) {
@@ -235,6 +274,7 @@ async function main() {
         screenshot: "screenshot <name> --revision <n>",
         run: "run <workflow.json>",
         summon: "summon <rapp-summon://... chant>",
+        machine: "machine <resident-rappid> <MACHINE> <op> [args-json]",
       },
       policy: "semantic controls only; no coordinates or arbitrary JavaScript",
     });
@@ -265,6 +305,9 @@ async function main() {
   }
   if (command === "run") return print(await workflow(args[0]));
   if (command === "summon") return print(await summon(args[0]));
+  if (command === "machine") {
+    return print(await machineChat(args[0], args[1], args[2], args[3] || "{}"));
+  }
   throw new Error(`Unknown command ${command}. Run rapp-zoo-v2 help.`);
 }
 

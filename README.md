@@ -98,6 +98,10 @@ The local developer core has no account, activation key, hosted runtime, or
 proprietary project format. Enterprise governance can be layered later without
 holding back local prototyping or Store mindshare.
 
+Virtual-computer neighborhoods use the same chat door with an optional typed
+machine sigil for deterministic control and bounded events back into the AI.
+See [`docs/VIRTUAL-COMPUTERS.md`](docs/VIRTUAL-COMPUTERS.md).
+
 ## Full rewrite of RAPP Zoo v1
 
 V1 is a historical Flask keeper built around retired Brainstem egg families,
