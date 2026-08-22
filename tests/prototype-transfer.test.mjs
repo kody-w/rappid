@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import {
   mkdtempSync,
   readFileSync,
@@ -15,6 +16,7 @@ import {
   importPrototypeTransfer,
   validatePrototypeTransfer,
 } from "../src/prototype-transfer.mjs";
+import { canonical } from "../src/rapp1.mjs";
 
 function fixture(t) {
   const root = mkdtempSync(path.join(os.tmpdir(), "rapp-zoo-transfer-"));
@@ -124,5 +126,40 @@ test("prototype mutation cannot silently outgrow the portable transfer profile",
       outputFile: path.join(f.root, "too-large.json"),
     }),
     /prototype limit/,
+  );
+});
+
+test("import refuses malformed UTF-8 and oversized externally constructed transfers", (t) => {
+  const f = fixture(t);
+  const malformed = path.join(f.root, "malformed.json");
+  writeFileSync(malformed, Buffer.from([0x7b, 0x22, 0x78, 0x22, 0x3a, 0x22, 0xff, 0x22, 0x7d]));
+  assert.throws(
+    () => importPrototypeTransfer({
+      transferFile: malformed,
+      estateHome: path.join(f.root, "destination"),
+    }),
+    /invalid UTF-8/,
+  );
+
+  const output = path.join(f.root, "portable.json");
+  const transfer = exportPrototypeTransfer({
+    handoffFile: f.handoffFile,
+    outputFile: output,
+  });
+  const content = Buffer.alloc(512 * 1024 + 1, 0x61);
+  transfer.files = [{
+    path: "inputs/large.bin",
+    bytes: content.length,
+    sha256: createHash("sha256").update(content).digest("hex"),
+    content_base64: content.toString("base64"),
+  }];
+  const unsigned = structuredClone(transfer);
+  delete unsigned.transfer_hash;
+  transfer.transfer_hash = createHash("sha256")
+    .update(Buffer.from(canonical(unsigned), "utf8"))
+    .digest("hex");
+  assert.throws(
+    () => validatePrototypeTransfer(transfer),
+    /portable prototype limit/,
   );
 });

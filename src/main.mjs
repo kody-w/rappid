@@ -24,6 +24,7 @@ import { startAutopilotServer } from "./autopilot-server.mjs";
 import { RappChatClient } from "./chat-client.mjs";
 import { fetchPinnedCatalog } from "./catalog-client.mjs";
 import { ChildEstateManager } from "./child-estates.mjs";
+import { ConversationStore } from "./conversation-store.mjs";
 import { startControlServer } from "./control-server.mjs";
 import {
   EstateStore,
@@ -95,22 +96,6 @@ const readyFile = process.env.RAPP_ZOO_READY_FILE
   ? path.resolve(process.env.RAPP_ZOO_READY_FILE)
   : null;
 
-function conversations() {
-  if (!existsSync(conversationsFile)) {
-    return { schema: "rapp-zoo-conversations/2.0", sessions: {} };
-  }
-  const value = readPrivateJson(conversationsFile, "Conversations");
-  if (
-    value?.schema !== "rapp-zoo-conversations/2.0"
-    || !value.sessions
-    || typeof value.sessions !== "object"
-    || Array.isArray(value.sessions)
-  ) {
-    throw new Error("Conversation store is invalid.");
-  }
-  return value;
-}
-
 function defaultReportConfig() {
   return {
     schema: REPORT_CONFIG_SCHEMA,
@@ -130,6 +115,9 @@ function reportConfig() {
 const ledger = new OperationLedger({
   estateHome: store.estateHome,
   estateId: estate.estate_id,
+});
+const conversationStore = new ConversationStore({
+  file: conversationsFile,
 });
 const globalLoader = new GlobalObjectLoader({ estateHome: store.estateHome });
 const summonStore = new LocalSummonStore({ estateHome: store.estateHome });
@@ -231,13 +219,7 @@ function publicChildren(records) {
 }
 
 function publicTranscripts() {
-  const source = conversations().sessions;
-  return Object.fromEntries(
-    Object.entries(source).map(([rappid, value]) => [
-      rappid,
-      structuredClone(value.messages || []),
-    ]),
-  );
+  return conversationStore.publicMessages();
 }
 
 async function state(requestedSelection = undefined) {
@@ -376,11 +358,7 @@ register("zoo:chat", async (rappid, prompt) => {
     throw new Error("Chat prompt must be non-empty and bounded.");
   }
   const target = resident(rappid);
-  const document = conversations();
-  const sessionRecord = document.sessions[rappid] || {
-    session_id: null,
-    messages: [],
-  };
+  const sessionRecord = conversationStore.session(rappid);
   sessionRecord.messages.push({ role: "user", text: prompt });
   const result = await new RappChatClient({
     baseUrl: target.base_url,
@@ -396,8 +374,7 @@ register("zoo:chat", async (rappid, prompt) => {
   for (const line of result.agent_logs) {
     sessionRecord.messages.push({ role: "log", text: line });
   }
-  document.sessions[rappid] = sessionRecord;
-  writePrivateJson(conversationsFile, document);
+  await conversationStore.commit(rappid, sessionRecord);
   ledger.append({
     actor: rappid,
     action: "chat.turn",
@@ -472,19 +449,19 @@ register("zoo:library-dial", async (alias) => {
     summary: `Dialed approved summon ${alias}.`,
     evidence: [result.entry.rappid, `source:${result.source}`],
   });
-
-  register("zoo:library-import", async ({ url, sha256 }) => {
-    const catalog = await fetchPinnedCatalog({ url, sha256 });
-    const entries = library.importCatalog(catalog);
-    ledger.append({
-      action: "summon.catalog-import",
-      status: "completed",
-      summary: `Imported ${entries.length} approved public summons.`,
-      evidence: [sha256, `entries:${entries.length}`],
-    });
-    return { entries: entries.length };
-  });
   return { source: result.source, alias };
+});
+
+register("zoo:library-import", async ({ url, sha256 }) => {
+  const catalog = await fetchPinnedCatalog({ url, sha256 });
+  const entries = library.importCatalog(catalog);
+  ledger.append({
+    action: "summon.catalog-import",
+    status: "completed",
+    summary: `Imported ${entries.length} approved public summons.`,
+    evidence: [sha256, `entries:${entries.length}`],
+  });
+  return { entries: entries.length };
 });
 
 register("zoo:library-approve", async ({

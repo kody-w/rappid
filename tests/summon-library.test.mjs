@@ -169,3 +169,19 @@ test("local dial is network-free; imported public dial saves before use", async 
   assert.equal(redial.source, "local");
   assert.equal(loads, 1);
 });
+
+test("catalog import rejects duplicate rappids before persisting corruption", (t) => {
+  const source = fixture(t);
+  source.library.approve(approval(source));
+  const catalog = source.library.publicCatalog();
+  catalog.summons.push({
+    ...structuredClone(catalog.summons[0]),
+    alias: "weather-alias",
+  });
+  const target = fixture(t);
+  assert.throws(
+    () => target.library.importCatalog(catalog),
+    /conflicts with an existing alias or rappid/,
+  );
+  assert.deepEqual(target.library.list(), []);
+});

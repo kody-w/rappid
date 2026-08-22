@@ -16,6 +16,7 @@ import {
   canonical,
   parseIJson,
 } from "./rapp1.mjs";
+import { decodeUtf8 } from "./http.mjs";
 
 export const PROTOTYPE_TRANSFER_SCHEMA = "rapp-zoo-prototype-transfer/2.0";
 const SHA256 = /^[0-9a-f]{64}$/;
@@ -50,7 +51,9 @@ export function exportPrototypeTransfer({
   now = () => new Date(),
 }) {
   const workspace = path.dirname(path.resolve(handoffFile));
-  const handoff = parseIJson(readFileSync(handoffFile, "utf8"));
+  const handoff = parseIJson(
+    decodeUtf8(readFileSync(handoffFile), "Prototype handoff"),
+  );
   if (
     handoff.schema !== PROTOTYPE_HANDOFF_SCHEMA
     || handoff.stage !== "prototype"
@@ -124,6 +127,7 @@ export function validatePrototypeTransfer(value) {
     throw new Error("Prototype transfer is invalid or integrity-drifted.");
   }
   const seen = new Set();
+  let totalBytes = 0;
   for (const file of value.files) {
     const relative = safeRelative(file.path);
     if (
@@ -137,6 +141,10 @@ export function validatePrototypeTransfer(value) {
     }
     seen.add(relative);
     const bytes = Buffer.from(file.content_base64, "base64");
+    totalBytes += bytes.length;
+    if (totalBytes > MAX_TRANSFER_BYTES) {
+      throw new Error("Prototype transfer exceeds the portable prototype limit.");
+    }
     if (
       bytes.toString("base64") !== file.content_base64
       || bytes.length !== file.bytes
@@ -153,7 +161,12 @@ export function importPrototypeTransfer({
   estateHome,
 }) {
   const transfer = validatePrototypeTransfer(
-    parseIJson(readFileSync(path.resolve(transferFile), "utf8")),
+    parseIJson(
+      decodeUtf8(
+        readFileSync(path.resolve(transferFile)),
+        "Prototype transfer",
+      ),
+    ),
   );
   const root = ensurePrivateDirectory(
     path.join(path.resolve(estateHome), "imported-prototypes"),
@@ -174,7 +187,9 @@ export function importPrototypeTransfer({
   }
   const handoffFile = path.join(workspace, "handoff.json");
   if (existsSync(handoffFile)) {
-    const current = parseIJson(readFileSync(handoffFile, "utf8"));
+    const current = parseIJson(
+      decodeUtf8(readFileSync(handoffFile), "Imported prototype handoff"),
+    );
     if (canonical(current) !== canonical(transfer.handoff)) {
       throw new Error("Imported prototype handoff conflicts with existing lineage.");
     }

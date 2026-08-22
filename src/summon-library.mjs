@@ -295,9 +295,26 @@ export class SummonLibrary {
       for (const publicEntry of catalog.summons) {
         const entry = { ...structuredClone(publicEntry), local_receipt: null };
         validateEntry(entry, { approvedLicenses: this.approvedLicenses });
-        if (!library.entries.some((candidate) => candidate.alias === entry.alias)) {
-          library.entries.push(entry);
+        const conflict = library.entries.find((candidate) => (
+          candidate.alias === entry.alias
+          || candidate.rappid === entry.rappid
+        ));
+        if (conflict) {
+          const samePublicEntry = conflict.alias === entry.alias
+            && conflict.rappid === entry.rappid
+            && conflict.name === entry.name
+            && conflict.version === entry.version
+            && JSON.stringify(conflict.license) === JSON.stringify(entry.license)
+            && JSON.stringify(conflict.manifest) === JSON.stringify(entry.manifest)
+            && JSON.stringify(conflict.approval) === JSON.stringify(entry.approval);
+          if (!samePublicEntry) {
+            throw new Error(
+              "Summon catalog conflicts with an existing alias or rappid.",
+            );
+          }
+          continue;
         }
+        library.entries.push(entry);
       }
       library.entries.sort((left, right) => left.alias.localeCompare(right.alias));
       writePrivateJson(this.file, library);

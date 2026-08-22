@@ -55,6 +55,27 @@ const mutants = [
     test: "tests/local-drill.test.mjs",
   },
   {
+    name: "catalog-duplicate-rappid",
+    file: "src/summon-library.mjs",
+    from: "const conflict = library.entries.find((candidate) => (\n          candidate.alias === entry.alias\n          || candidate.rappid === entry.rappid\n        ));",
+    to: "const conflict = library.entries.find((candidate) => (\n          candidate.alias === entry.alias\n        ));",
+    test: "tests/summon-library.test.mjs",
+  },
+  {
+    name: "transfer-invalid-utf8",
+    file: "src/prototype-transfer.mjs",
+    from: 'decodeUtf8(\n        readFileSync(path.resolve(transferFile)),\n        "Prototype transfer",\n      )',
+    to: 'readFileSync(path.resolve(transferFile)).toString("utf8")',
+    test: "tests/prototype-transfer.test.mjs",
+  },
+  {
+    name: "transfer-inbound-size",
+    file: "src/prototype-transfer.mjs",
+    from: 'if (totalBytes > MAX_TRANSFER_BYTES) {\n      throw new Error("Prototype transfer exceeds the portable prototype limit.");\n    }',
+    to: "if (false) { throw new Error(); }",
+    test: "tests/prototype-transfer.test.mjs",
+  },
+  {
     name: "generic-health-200",
     file: "src/chat-client.mjs",
     from: '|| value.status !== "ok"',

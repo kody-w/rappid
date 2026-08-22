@@ -34,6 +34,7 @@ for (const required of [
   "src/rapp1.mjs",
   "src/estate-store.mjs",
   "src/keyed-queue.mjs",
+  "src/conversation-store.mjs",
   "src/chat-client.mjs",
   "src/catalog-client.mjs",
   "src/control-server.mjs",
