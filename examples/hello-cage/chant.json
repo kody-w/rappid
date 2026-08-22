@@ -1,0 +1,6 @@
+{
+  "schema": "rapp-zoo-summon-chant/2.0",
+  "chant": "rapp-summon://github/kody-w/rapp-zoo-v2/807107e0e35a9ff984792814977da64a8917fd04/examples/hello-cage/manifest.json?sha256=50df9bcdf54eee8595dd4fe641189da267f0c8142244bb94039ac87383449ef5",
+  "manifest_url": "https://raw.githubusercontent.com/kody-w/rapp-zoo-v2/807107e0e35a9ff984792814977da64a8917fd04/examples/hello-cage/manifest.json",
+  "manifest_sha256": "50df9bcdf54eee8595dd4fe641189da267f0c8142244bb94039ac87383449ef5"
+}
