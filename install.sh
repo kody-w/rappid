@@ -123,10 +123,21 @@ if [ "${RAPP_ZOO_AUTOSTART:-0}" = "1" ] && [ "$(uname -s)" = "Darwin" ]; then
   <string>io.github.kody-w.rapp-zoo-v2</string>
   <key>ProgramArguments</key>
   <array>
-    <string>$BIN_DIR/rapp-zoo-v2</string>
-    <string>start</string>
+    <string>$INSTALL_ROOT/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron</string>
+    <string>$INSTALL_ROOT</string>
+    <string>--rapp-zoo-estate-home=$HOME/.rapp-zoo-v2/estates/primary</string>
+    <string>--user-data-dir=$HOME/.rapp-zoo-v2/estates/primary/electron-user-data</string>
   </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>RAPP_ZOO_ROOT</key>
+    <string>$HOME/.rapp-zoo-v2</string>
+    <key>RAPP_ZOO_ESTATE_HOME</key>
+    <string>$HOME/.rapp-zoo-v2/estates/primary</string>
+  </dict>
   <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
   <true/>
   <key>StandardOutPath</key>
   <string>$HOME/Library/Logs/rapp-zoo-v2.log</string>

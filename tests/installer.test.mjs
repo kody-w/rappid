@@ -19,6 +19,8 @@ test("installers resolve immutable public commits and stage atomically", () => {
   assert.match(shell, /exec "\$NODE_EXE"/);
   assert.match(shell, /RAPP_ZOO_AUTOSTART/);
   assert.match(shell, /io\.github\.kody-w\.rapp-zoo-v2\.plist/);
+  assert.match(shell, /Electron\.app\/Contents\/MacOS\/Electron/);
+  assert.match(shell, /<key>KeepAlive<\/key>/);
   assert.match(powershell, /commits\/\$RequestedRef/);
   assert.match(powershell, /\^\[0-9a-f\]\{40\}\$/);
   assert.match(powershell, /Move-Item \$Stage \$InstallRoot/);
