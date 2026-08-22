@@ -63,8 +63,40 @@ npm run gate
 npm start
 ```
 
-Use `RAPP_ZOO_HOME` to select an isolated estate home. Different homes produce
+## Install and drive
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/kody-w/rapp-zoo-v2/main/install.sh | bash
+rapp-zoo-v2 start
+rapp-zoo-v2 snapshot
+```
+
+The CLI drives the same visible controls through an authenticated semantic
+Chromium object. It has no coordinate-click or arbitrary-JavaScript command.
+Use `RAPP_ZOO_ROOT` to select an isolated cage, or
+`RAPP_ZOO_ESTATE_HOME` to address one estate. Different estate homes produce
 independent Dock creatures and Electron `userData` directories.
+
+## Summon anywhere, work locally
+
+A Summon Chant is a copyable immutable URI:
+
+```text
+rapp-summon://github/<owner>/<repo>/<40-char-commit>/<manifest-path>?sha256=<64hex>
+```
+
+```bash
+rapp-zoo-v2 summon 'rapp-summon://github/...'
+```
+
+The chant resolves the commit-pinned global object, verifies and saves every
+dimension inside the local RAPP cage, and then becomes offline-ready. Quantum
+Drill never uses the network; it is only an easy lookup across fully saved
+local summon receipts.
+
+The local developer core has no account, activation key, hosted runtime, or
+proprietary project format. Enterprise governance can be layered later without
+holding back local prototyping or Store mindshare.
 
 ## Full rewrite of RAPP Zoo v1
 
