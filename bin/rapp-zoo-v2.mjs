@@ -1,8 +1,14 @@
 #!/usr/bin/env node
 
 import {
+  closeSync,
+  constants,
   existsSync,
+  fstatSync,
+  lstatSync,
+  openSync,
   readFileSync,
+  readSync,
 } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
@@ -13,6 +19,11 @@ import { sendAutopilotCommand } from "../src/autopilot-server.mjs";
 import { requestInstanceControl } from "../src/control-server.mjs";
 import { parseIJson } from "../src/rapp1.mjs";
 import { parseSummonChant } from "../src/summon-chant.mjs";
+import {
+  MAX_SIMULATION_FIXTURE_BYTES,
+  MAX_SIMULATION_PLAN_BYTES,
+  runSimulationFixture,
+} from "../src/simulation-neighborhood.mjs";
 import { buildMachineCommand } from "../src/virtual-computer.mjs";
 
 const packageDir = path.resolve(
@@ -260,6 +271,60 @@ async function workflow(file) {
   return { results, snapshot };
 }
 
+function readBoundedLocalFile(file, maximumBytes, label) {
+  const resolved = path.resolve(file);
+  const entry = lstatSync(resolved);
+  if (!entry.isFile() || entry.isSymbolicLink() || entry.size > maximumBytes) {
+    throw new Error(`${label} must be a bounded regular file.`);
+  }
+  const noFollow = constants.O_NOFOLLOW || 0;
+  const descriptor = openSync(resolved, constants.O_RDONLY | noFollow);
+  try {
+    const opened = fstatSync(descriptor);
+    if (!opened.isFile() || opened.size > maximumBytes) {
+      throw new Error(`${label} must be a bounded regular file.`);
+    }
+    const bytes = Buffer.allocUnsafe(maximumBytes + 1);
+    let total = 0;
+    while (total < bytes.length) {
+      const count = readSync(
+        descriptor,
+        bytes,
+        total,
+        bytes.length - total,
+        null,
+      );
+      if (count === 0) break;
+      total += count;
+    }
+    if (total > maximumBytes) {
+      throw new Error(`${label} exceeds its local replay limit.`);
+    }
+    return new TextDecoder("utf-8", { fatal: true }).decode(
+      bytes.subarray(0, total),
+    );
+  } finally {
+    closeSync(descriptor);
+  }
+}
+
+async function simulate(planFile, fixtureFile) {
+  const planSource = readBoundedLocalFile(
+    planFile,
+    MAX_SIMULATION_PLAN_BYTES,
+    "Simulation plan",
+  );
+  const fixtureSource = readBoundedLocalFile(
+    fixtureFile,
+    MAX_SIMULATION_FIXTURE_BYTES,
+    "Simulation fixture",
+  );
+  return runSimulationFixture(
+    parseIJson(planSource),
+    parseIJson(fixtureSource),
+  );
+}
+
 async function main() {
   if (command === "help") {
     print({
@@ -275,6 +340,7 @@ async function main() {
         run: "run <workflow.json>",
         summon: "summon <rapp-summon://... chant>",
         machine: "machine <resident-rappid> <MACHINE> <op> [args-json]",
+        simulate: "simulate <plan.json> <fixture.json>",
       },
       policy: "semantic controls only; no coordinates or arbitrary JavaScript",
     });
@@ -305,6 +371,7 @@ async function main() {
   }
   if (command === "run") return print(await workflow(args[0]));
   if (command === "summon") return print(await summon(args[0]));
+  if (command === "simulate") return print(await simulate(args[0], args[1]));
   if (command === "machine") {
     return print(await machineChat(args[0], args[1], args[2], args[3] || "{}"));
   }

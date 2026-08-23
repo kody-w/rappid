@@ -1,0 +1,50 @@
+{
+  "schema": "rapp-zoo-global-object/2.0",
+  "name": "Multi-OS Private vNet Simulation",
+  "source_rappid": "rappid:@kody-w/multi-os-vnet-simulation:60c61e9a2c9474075c5738f993fc60c8484a60db1caa12ab11f8b3fff407382a",
+  "created_utc": "2026-08-22T23:15:00.000Z",
+  "dimensions": [
+    {
+      "name": "deterministic-plan",
+      "url": "https://raw.githubusercontent.com/kody-w/rapp-zoo-v2/244c22cbf8020346b6fea9d778f86bc6fc67a53d/examples/multi-os-vnet-simulation/deterministic-plan.json",
+      "sha256": "ef1a0e1bf74750647fa011a218e3f9f9c0a91c2a428ad78efab68da5f5089d36",
+      "bytes": 4922,
+      "media_type": "application/json"
+    },
+    {
+      "name": "fixture",
+      "url": "https://raw.githubusercontent.com/kody-w/rapp-zoo-v2/244c22cbf8020346b6fea9d778f86bc6fc67a53d/examples/multi-os-vnet-simulation/fixture.json",
+      "sha256": "927746de0b2c208043f2a755426a6e1c36b85beb8823baf8a0016ece8a7dfaff",
+      "bytes": 12621,
+      "media_type": "application/json"
+    },
+    {
+      "name": "handoff",
+      "url": "https://raw.githubusercontent.com/kody-w/rapp-zoo-v2/244c22cbf8020346b6fea9d778f86bc6fc67a53d/examples/multi-os-vnet-simulation/handoff.md",
+      "sha256": "b554144a04934e17ea765ae9bda05682180c98711749fd1780511a12f8536b15",
+      "bytes": 487,
+      "media_type": "text/markdown"
+    },
+    {
+      "name": "license",
+      "url": "https://raw.githubusercontent.com/kody-w/rapp-zoo-v2/244c22cbf8020346b6fea9d778f86bc6fc67a53d/examples/multi-os-vnet-simulation/LICENSE",
+      "sha256": "8cb9968a4537b8e8b18e1ae4b703ebb7e2f0ace4155c0a3bd18b726f44612977",
+      "bytes": 1081,
+      "media_type": "text/plain"
+    },
+    {
+      "name": "readme",
+      "url": "https://raw.githubusercontent.com/kody-w/rapp-zoo-v2/244c22cbf8020346b6fea9d778f86bc6fc67a53d/examples/multi-os-vnet-simulation/README.md",
+      "sha256": "443fa0fe0a29e6431eb0955af9ac3c6e9e9c56f0c2489afba8ee2aaa00b38489",
+      "bytes": 728,
+      "media_type": "text/markdown"
+    },
+    {
+      "name": "stochastic-plan",
+      "url": "https://raw.githubusercontent.com/kody-w/rapp-zoo-v2/244c22cbf8020346b6fea9d778f86bc6fc67a53d/examples/multi-os-vnet-simulation/stochastic-plan.json",
+      "sha256": "64bd5269cffa4371ed848dee7ce5292288ef07e104c0f2ea09469d018dd22fd6",
+      "bytes": 4943,
+      "media_type": "application/json"
+    }
+  ]
+}

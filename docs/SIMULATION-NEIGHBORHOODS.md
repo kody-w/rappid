@@ -25,3 +25,39 @@ clusters, stable output (when accepted), durations, and evidence hash.
 
 The simulation provider is injected locally. Control and events cross the exact
 RAPP chat door; the provider's vNet/data plane stays inside the cage.
+
+Live providers use an explicit local `file:` module URL, named export, canonical
+provider-data document, and the literal trust declaration
+`fully-trusted-local-code`. They execute with the Zoo user's OS privileges and
+are **not** a hostile-code sandbox. Stage them in a sterile directory and review
+them like any executable before use; the child receives read permission only
+for the Zoo runtime, while snapshotted provider bytes arrive over bounded stdin.
+
+The separate process is a fault-containment boundary: small heap, bounded
+stdin/stdout/stderr, fatal protocol decoding, process-tree kill on timeout, and
+parent-side canonical revalidation. Function serialization and captured caller
+state are not part of the provider contract. Zoo snapshots the bounded provider
+bytes once; every replica imports that same in-memory source, never the mutable
+original path. Every report binds the executed module hash, export, trust
+declaration, and provider-data hash.
+
+## Offline fixture replay
+
+The headless CLI accepts only inert JSON, never an arbitrary provider module:
+
+```bash
+rapp-zoo-v2 simulate plan.json fixture.json
+```
+
+The plan is capped at 256 replicas and 256 KiB. Seeds are bounded strings. The
+fixture is capped at 128 KiB and must contain exactly one result for every
+declared replica. Canonical result records have a separate 512 KiB aggregate
+budget, clusters retain hashes and replica membership without duplicating
+payloads, and the final evidence report remains inside the 1 MiB RAPP canonical
+budget. The same clustering and acceptance engine used by live injected
+providers produces the report.
+
+The public
+[`multi-os-vnet-simulation`](../examples/multi-os-vnet-simulation/README.md)
+example freezes 100 results: deterministic replay fails at 94/100, while the
+predeclared stochastic 94/100 quorum passes and retains all six outliers.
