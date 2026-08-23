@@ -1,0 +1,6 @@
+{
+  "schema": "rapp-zoo-summon-chant/2.0",
+  "chant": "rapp-summon://github/kody-w/rapp-zoo-v2/a317412e5fc1b090fe4b8b004c0c1162daf56d70/examples/multi-os-vnet-simulation/manifest.json?sha256=92814362b29b4d460b0fa96ce5d5e5afcfa56cd01c2946878cce8b93c67344a5",
+  "manifest_url": "https://raw.githubusercontent.com/kody-w/rapp-zoo-v2/a317412e5fc1b090fe4b8b004c0c1162daf56d70/examples/multi-os-vnet-simulation/manifest.json",
+  "manifest_sha256": "92814362b29b4d460b0fa96ce5d5e5afcfa56cd01c2946878cce8b93c67344a5"
+}

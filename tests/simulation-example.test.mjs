@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
+import { parseSummonChant } from "../src/summon-chant.mjs";
+
 const directory = path.resolve(
   import.meta.dirname,
   "..",
@@ -61,4 +63,15 @@ test("public simulation fixture contains exactly 94 stable and 6 retained outlie
     fixture.slice(94).map((result) => result.receipt),
     Array.from({ length: 6 }, (_, index) => `SIMULATION_NOISE_${index + 94}`),
   );
+});
+
+test("public simulation chant pins the committed manifest bytes", () => {
+  const value = JSON.parse(readFileSync(path.join(directory, "chant.json")));
+  const parsed = parseSummonChant(value.chant);
+  const bytes = readFileSync(path.join(directory, "manifest.json"));
+  const digest = createHash("sha256").update(bytes).digest("hex");
+  assert.equal(value.manifest_sha256, digest);
+  assert.equal(parsed.manifest_sha256, digest);
+  assert.equal(parsed.manifest_url, value.manifest_url);
+  assert.match(parsed.commit, /^[0-9a-f]{40}$/);
 });
