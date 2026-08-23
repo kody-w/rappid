@@ -1,0 +1,220 @@
+{
+  "schema": "rapp-zoo-simulation/2.0",
+  "simulation_id": "multi-os-vnet-stochastic",
+  "mode": "stochastic",
+  "replicas": 100,
+  "max_concurrency": 16,
+  "replica_timeout_ms": 1000,
+  "seeds": [
+    "replica-000",
+    "replica-001",
+    "replica-002",
+    "replica-003",
+    "replica-004",
+    "replica-005",
+    "replica-006",
+    "replica-007",
+    "replica-008",
+    "replica-009",
+    "replica-010",
+    "replica-011",
+    "replica-012",
+    "replica-013",
+    "replica-014",
+    "replica-015",
+    "replica-016",
+    "replica-017",
+    "replica-018",
+    "replica-019",
+    "replica-020",
+    "replica-021",
+    "replica-022",
+    "replica-023",
+    "replica-024",
+    "replica-025",
+    "replica-026",
+    "replica-027",
+    "replica-028",
+    "replica-029",
+    "replica-030",
+    "replica-031",
+    "replica-032",
+    "replica-033",
+    "replica-034",
+    "replica-035",
+    "replica-036",
+    "replica-037",
+    "replica-038",
+    "replica-039",
+    "replica-040",
+    "replica-041",
+    "replica-042",
+    "replica-043",
+    "replica-044",
+    "replica-045",
+    "replica-046",
+    "replica-047",
+    "replica-048",
+    "replica-049",
+    "replica-050",
+    "replica-051",
+    "replica-052",
+    "replica-053",
+    "replica-054",
+    "replica-055",
+    "replica-056",
+    "replica-057",
+    "replica-058",
+    "replica-059",
+    "replica-060",
+    "replica-061",
+    "replica-062",
+    "replica-063",
+    "replica-064",
+    "replica-065",
+    "replica-066",
+    "replica-067",
+    "replica-068",
+    "replica-069",
+    "replica-070",
+    "replica-071",
+    "replica-072",
+    "replica-073",
+    "replica-074",
+    "replica-075",
+    "replica-076",
+    "replica-077",
+    "replica-078",
+    "replica-079",
+    "replica-080",
+    "replica-081",
+    "replica-082",
+    "replica-083",
+    "replica-084",
+    "replica-085",
+    "replica-086",
+    "replica-087",
+    "replica-088",
+    "replica-089",
+    "replica-090",
+    "replica-091",
+    "replica-092",
+    "replica-093",
+    "replica-094",
+    "replica-095",
+    "replica-096",
+    "replica-097",
+    "replica-098",
+    "replica-099"
+  ],
+  "topology": {
+    "nodes": [
+      {
+        "id": "windows-one",
+        "os": "windows",
+        "image_sha256": "9ef1d6804eb68472913762fdf17c685570e5515a8b5cff86c8ca723a8a9b715c",
+        "config_sha256": "3c941925631282bc06a60ce54e9690101a56114b56bb6e84623d1550779d82dc"
+      },
+      {
+        "id": "macos-one",
+        "os": "macos",
+        "image_sha256": "21a9d758b1248427c62ba571f54ef5996bcd8d3a714b278428f965115c224c70",
+        "config_sha256": "0ec7002a32e2af251e163c6fac1f888ddb01b8f531d057c93135ea3577f99bee"
+      },
+      {
+        "id": "linux-one",
+        "os": "linux",
+        "image_sha256": "49b17828864c7c19d1d59e204c9ab2600c77a0fe78233e9e8f7bc371456602ab",
+        "config_sha256": "a1710db901f4dba565d187fc440775c6da4b8bced9e0387cbd3ad3b0c7a5703e"
+      },
+      {
+        "id": "as400-one",
+        "os": "as400-sim",
+        "image_sha256": "89f14229b44edc3be7ca1653c60f1fbc3a9d3afb0e88f8b6175638fa28dc21bd",
+        "config_sha256": "b3ff12a6aea6c1fa527b9b5ceecc54d5941de3c59b20a1b0e2f48e2a8ece0567"
+      },
+      {
+        "id": "generic-one",
+        "os": "generic",
+        "image_sha256": "ec5353a27c81cbc203bd6e2333ea1f147a1128aad8027708664e94479cc59541",
+        "config_sha256": "bb602341bb1c797bd8b3026c37ac63ec6a21c502bed74e956228e605b6732b29"
+      }
+    ],
+    "links": [
+      {
+        "from": "windows-one",
+        "to": "linux-one",
+        "network": "private-vnet",
+        "latency_ms": 2,
+        "loss_basis_points": 0
+      },
+      {
+        "from": "macos-one",
+        "to": "linux-one",
+        "network": "private-vnet",
+        "latency_ms": 2,
+        "loss_basis_points": 0
+      },
+      {
+        "from": "linux-one",
+        "to": "as400-one",
+        "network": "private-vnet",
+        "latency_ms": 4,
+        "loss_basis_points": 0
+      },
+      {
+        "from": "as400-one",
+        "to": "generic-one",
+        "network": "private-vnet",
+        "latency_ms": 3,
+        "loss_basis_points": 0
+      }
+    ]
+  },
+  "steps": [
+    {
+      "step": 0,
+      "node": "windows-one",
+      "operation": "artifact.prepare",
+      "args": {
+        "artifact": "daily-batch"
+      }
+    },
+    {
+      "step": 1,
+      "node": "macos-one",
+      "operation": "artifact.sign",
+      "args": {
+        "artifact": "daily-batch"
+      }
+    },
+    {
+      "step": 2,
+      "node": "linux-one",
+      "operation": "artifact.route",
+      "args": {
+        "network": "private-vnet"
+      }
+    },
+    {
+      "step": 3,
+      "node": "as400-one",
+      "operation": "job.submit",
+      "args": {
+        "queue": "batch-one"
+      }
+    },
+    {
+      "step": 4,
+      "node": "generic-one",
+      "operation": "evidence.seal",
+      "args": {
+        "receipt": "simulation-proof"
+      }
+    }
+  ],
+  "policy": {
+    "kind": "exact-quorum",
+    "minimum_matching": 94
+  }
+}

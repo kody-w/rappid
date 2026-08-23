@@ -21,6 +21,7 @@
     "test:mutations": "node scripts/mutation-gate.mjs",
     "test:rapp1": "node scripts/rapp1-conformance.mjs",
     "test:licenses": "node scripts/license-gate.mjs",
+    "build:simulation-example": "node scripts/build-simulation-example.mjs",
     "test": "npm run test:rapp1 && npm run test:licenses && npm run test:unit && npm run test:e2e && npm run test:mutations",
     "gate": "node scripts/acceptance-gate.mjs"
   },

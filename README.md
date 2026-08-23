@@ -102,6 +102,16 @@ Virtual-computer neighborhoods use the same chat door with an optional typed
 machine sigil for deterministic control and bounded events back into the AI.
 See [`docs/VIRTUAL-COMPUTERS.md`](docs/VIRTUAL-COMPUTERS.md).
 
+Frozen simulation evidence can be replayed without loading provider code:
+
+```bash
+rapp-zoo-v2 simulate plan.json fixture.json
+```
+
+See [`docs/SIMULATION-NEIGHBORHOODS.md`](docs/SIMULATION-NEIGHBORHOODS.md)
+and the public 100-replica
+[`multi-os-vnet-simulation`](examples/multi-os-vnet-simulation/README.md).
+
 ## Full rewrite of RAPP Zoo v1
 
 V1 is a historical Flask keeper built around retired Brainstem egg families,
