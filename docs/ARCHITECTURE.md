@@ -1,5 +1,12 @@
 # RAPP Zoo v2 architecture
 
+> **Status:** RAPP Zoo v2 is no longer this repo's main Electron application —
+> the base app is the RAPP Brainstem Frontier app
+> (`kody-w/aibast-agents-library`, `beta/`), launched by reference via
+> `npm start`. The Zoo remains in-repo as the reference implementation of the
+> estate seam described below, launched with `npm run start:zoo`, and every
+> rule in this document still binds it.
+
 ## Authority
 
 `estate.json` is the authority for identity, lineage, and resident membership.

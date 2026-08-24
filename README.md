@@ -43,11 +43,23 @@ python3 skins/rappid_skin.py --species copilot --port 7182   # wrap a 3rd-party 
 
 ---
 
-# RAPP Zoo v2 (the estate)
+# The estate
 
-RAPP Zoo v2 is a provider-neutral Electron estate for local RAPP
-neighborhoods. One visible Dock/taskbar creature owns one private data-defined
-estate. The estate may attach multiple local neighborhoods over the unchanged
+The **base Electron application** for this estate is the **RAPP Brainstem
+Frontier** app ([`kody-w/aibast-agents-library`](https://github.com/kody-w/aibast-agents-library),
+`beta/`). `npm start` locates your Frontier checkout (override with
+`FRONTIER_APP_DIR`) and launches it; Frontier attaches to the local Brainstem
+kernel and exposes an authenticated loopback UI driver, so an agent can
+autopilot the same visible controls a person would click. Frontier's code is
+never vendored into this repository — it is launched by reference.
+
+## RAPP Zoo v2 (the in-repo reference estate)
+
+RAPP Zoo v2 remains in this repo (`src/`, `ui/`) as the reference
+implementation of the estate seam — no longer the main application, still
+fully gated. Launch it with `npm run start:zoo`. It is a provider-neutral
+Electron estate for local RAPP neighborhoods. One visible Dock/taskbar
+creature owns one private data-defined estate. The estate may attach multiple local neighborhoods over the unchanged
 RAPP `POST /chat` shape, and it may hatch bounded child estates when a
 neighborhood needs an independent app, home, lifecycle, or herd.
 
@@ -105,7 +117,8 @@ owner signatures or report ecosystem acceptance before they exist.
 ```bash
 npm install
 npm run gate
-npm start
+npm start        # launches the Frontier base app (FRONTIER_APP_DIR to point at a checkout)
+npm run start:zoo   # launches the in-repo reference Zoo estate
 ```
 
 ## Install and drive

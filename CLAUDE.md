@@ -7,13 +7,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Two layers in one repo:
 
 1. **The species layer (`rappidex/1`)** — Python 3 stdlib, `species/rappidex.py` plus `birth.py` (the Rite of Hatching) and `molt.py` (frames/mutation/reunion molt). Every AI on a machine is a **species**; its first invocation hatches a **rappid** — a sovereign `rapp/1` creature with a genome, a cry, a hologram, and a portable egg. `SPEC.md` is the protocol authority; conformance means reproducing `vectors/rappidex_vectors.json` byte-exactly.
-2. **The estate (RAPP Zoo v2)** — a provider-neutral Electron app (Node ESM, `src/*.mjs`, entry `src/main.mjs`) that attaches local AI "neighborhoods" over the RAPP/1 wire seam. `docs/ARCHITECTURE.md` covers authority and wire rules; `TEST-PLAN.md` enumerates the acceptance cases the gates automate.
+2. **The estate** — the **base Electron application is the RAPP Brainstem Frontier app** (`kody-w/aibast-agents-library`, `beta/`), launched by reference via `npm start` → `scripts/launch-frontier.mjs` (override the checkout with `FRONTIER_APP_DIR`; Frontier/AIBAST code is NEVER vendored into this repo — two-worlds boundary). The in-repo **RAPP Zoo v2** (Node ESM, `src/*.mjs`, entry `src/main.mjs`, `npm run start:zoo`) remains as the reference implementation of the estate seam and stays fully gated. `docs/ARCHITECTURE.md` covers authority and wire rules; `TEST-PLAN.md` enumerates the acceptance cases the gates automate.
 
 ## Commands
 
 Node ≥24.19.0, npm ≥11.6.0 (see `package.json` engines). Python side is stdlib-only.
 
 ```bash
+npm start                # launch the Frontier base app (by reference; FRONTIER_APP_DIR overrides)
+npm run start:zoo        # launch the in-repo reference Zoo estate
 npm run check            # node --check every module (syntax gate)
 npm run test:unit        # node --test tests/*.test.mjs
 node --test tests/party.test.mjs        # a single unit test file
