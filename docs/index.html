@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <title>RAPPid Zoo — every AI is a creature</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Give every AI on your machine a species identity: a unique creature call on invoke and done, a sovereign rapp/1 record, portable eggs, holograms, a party, and a Roost. Provider-neutral. Works with any AI ecosystem.">
+<meta name="description" content="Give every AI on your machine a species identity. A rappid must be BORN: an LLM on your device breaks a cypher derived from its identity and composes the motif that becomes its voice. Cries, eggs, holograms, AR, a party and a Roost. Provider-neutral.">
 <meta property="og:title" content="RAPPid Zoo — every AI is a creature">
 <meta property="og:description" content="Species cries, hatching, eggs, fusion, holograms, and the RAPPidex — creature mechanics for the AIs on your machine.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='28'%3E🦖%3C/text%3E%3C/svg%3E">
@@ -38,17 +38,25 @@ th{color:var(--muted);font-weight:400}
 <a href="holodex.html">✨ Holodex (live holograms)</a>
 <a href="https://github.com/kody-w/rapp-zoo-v2">GitHub</a>
 <a href="https://github.com/kody-w/rapp-zoo-v2/blob/main/SPEC.md">The spec</a>
+<a href="https://github.com/kody-w/rapp-zoo-v2/blob/main/species/hatchers.json">Hatcher adapters</a>
 </div>
 
 <h2>The species</h2>
 <p class="muted">Click a name to hear its call. Each individual voices the species cry with its own accent.</p>
 <table id="species"><tr><th>species</th><th>genus</th><th>the call</th></tr></table>
 
-<h2>Hear them, hatch them</h2>
+<h2>A rappid must be born, not minted</h2>
+<p>Hatching is a <b>rite</b>. The zoo derives a cypher from the creature's own identity and puts it to a real LLM on your machine — the <b>midwife</b>. It has to break the cypher (checked cold, so only real reasoning passes) and compose the MIDI motif that becomes the creature's voice. Seal = <code>sha256(cypher‖decode‖motif)</code>. No seal, no creature. That's the proof that species is actually running here — and the motif is written out as a real <code>.mid</code> birth song, with the exact session burned in as its birthday.</p>
 <pre>git clone https://github.com/kody-w/rapp-zoo-v2 && cd rapp-zoo-v2
-python3 species/rappidex.py hatch claude      # 🥚→🐣 first invocation = birth
+python3 species/rappidex.py hatch claude      # 🕯 the rite — an LLM must attest it
+python3 species/rappidex.py verify claude     # re-check the seal and the birthday
 python3 species/rappidex.py roar claude       # the species call, this individual's accent
 python3 species/rappidex.py list              # your dex</pre>
+
+<h2>Meeting a species nobody has met</h2>
+<p>The rite is also the encounter. Put it to an AI the dex has never seen — if it can answer for itself, it <em>is</em> a species: its answering shape is recorded, its register and first motif seed its look and voice, and it joins your dex so you can hatch your own of it. At its simplest an adapter is just a way to hand something a skill file and read the reply.</p>
+<pre>python3 species/rappidex.py discover "Some New AI" --command '&lt;how to call it&gt;'
+python3 species/rappidex.py hatch somenewai    # now hatch your own</pre>
 
 <h2>Eggs: back up, move, convert, breed</h2>
 <pre>python3 species/rappidex.py export claude -o claude.egg   # the portable document form
