@@ -2,19 +2,21 @@
 
 > **Every AI is a creature. Every creature has a call.**
 
-Like every Pokémon species has a cry you recognize with your eyes closed, every
-AI on your machine gets one: a unique synthesized **species call** that plays
+Every wild thing has a call you know before you see it — and now every
+AI on your machine does too: a unique synthesized **species call** that plays
 when it's invoked and when it finishes — so during eyes-off work you know *who*
 just spoke. The first invocation **hatches a rappid**: a sovereign `rapp/1`
 creature with a genome, a rarity, a hologram, and a portable egg.
 
-- **[📖 RAPPidex](https://kody-w.github.io/rapp-zoo-v2/rappidex.html)** — the living Pokédex: known species start shadowed; encounters reveal them; wild eggs grow the dex forever.
+- **[📖 RAPPidex](https://kody-w.github.io/rapp-zoo-v2/rappidex.html)** — the living field guide: known species start shadowed; encounters reveal them; wild eggs grow the dex forever.
 - **[✨ Holodex](https://kody-w.github.io/rapp-zoo-v2/holodex.html)** — every rappid as a particle-swarm hologram (Duneheart fauna engine), cries included.
 - **[SPEC.md](SPEC.md)** — the `rappidex/1` protocol: identity, genomes, eggs, cries, skins, lifecycle. Implementable anywhere; conformance = [`vectors/rappidex_vectors.json`](vectors/rappidex_vectors.json).
 - **[rapp_skill.md](rapp_skill.md)** / **[SKILL.md](SKILL.md)** / **[agent.py](agent.py)** — three on-ramps: RAPP-native skill, raw any-platform skill, single-file brainstem cartridge.
 - **`species/rappidex.py`** — the engine (Python 3 stdlib): `hatch · roar · list · export · import · convert · fuse · holodex`.
 - **`skins/rappid_skin.py`** — rapp(wrap) any third-party AI into a zoo citizen: hatches its rappid, roars on invoke/done, serves the exact RAPP/1 `POST /chat` seam below.
-- **Party & PC** — in the Electron estate, carry up to six rappids in the active party; the rest rest in the PC (`Party` tab; `src/party.mjs`).
+- **Party & Roost** — in the Electron estate, carry up to six rappids in the active party; the rest wait in the Roost (`Party` tab; `src/party.mjs`).
+- **Field transfer** — the party travels: `party export` (AirDrop the `.rappidparty`), `party qr` (scan-to-carry hotlink), `party import` (reassimilate on return). SPEC §9.
+- **The GODD layer** — bind a PRIVATE repo as the god-save: `godd save` / `godd pull` sync creatures through the cloud (companions with access pull the party with no QR at all), `godd seal`/`unseal` add the sneakernet-key vault tier. SPEC §10. The reference keeper's GODD lives [here](https://github.com/kody-w/RAPP-Private-Workspace) — that link resolves only if your signed-in account has companion access. That's the point.
 
 ```bash
 python3 species/rappidex.py hatch claude     # 🥚→🐣

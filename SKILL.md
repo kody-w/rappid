@@ -1,6 +1,6 @@
 ---
 name: rappid-zoo
-description: Give every AI on a machine a Pokémon-style species identity — a unique synthesized cry on invoke/done, a rapp/1 creature record hatched on first use, portable eggs (backup/convert/fuse), holograms, and skins that wrap third-party AIs into one RAPP-compatible zoo. Use when asked to hatch/roar/identify AIs by sound, manage rappids, or make AIs "play nicely together".
+description: Give every AI on a machine a creature-species identity — a unique synthesized cry on invoke/done, a rapp/1 creature record hatched on first use, portable eggs (backup/convert/fuse), holograms, and skins that wrap third-party AIs into one RAPP-compatible zoo. Use when asked to hatch/roar/identify AIs by sound, manage rappids, or make AIs "play nicely together".
 ---
 
 # RAPPid Zoo — the raw skill
@@ -11,8 +11,8 @@ RAPP skills natively, prefer `rapp_skill.md`; this document assumes nothing.
 
 ## The idea
 
-Like every Pokémon species has one unmistakable call, every AI **species** on a
-machine gets one synthesized cry. When an AI is invoked it announces itself;
+Every AI **species** on a machine gets one unmistakable synthesized cry — a call
+you learn once and recognize forever. When an AI is invoked it announces itself;
 when it finishes it chirps. The operator learns who is doing what by ear.
 The first invocation **hatches** a **rappid** — a unique individual creature of
 that species — with a sovereign identity, a genome, and a portable egg.

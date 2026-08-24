@@ -1,8 +1,8 @@
 // party.mjs — the active rappid party and the PC.
 //
-// Pokémon model: the trainer owns every hatched rappid on this device
+// The keeper owns every hatched rappid on this device
 // (records under $RAPP_HOME/rappids/), carries up to six in the ACTIVE
-// PARTY, and the rest wait in the PC. Party membership is estate data
+// PARTY, and the rest wait in the ROOST. Party membership is estate data
 // ($RAPP_HOME/party.json, schema rappid-party/1); the records themselves
 // are never moved or mutated by party operations.
 
@@ -97,7 +97,7 @@ export function addToParty(rappid) {
   const party = readParty();
   if (party.active.includes(rappid)) return partyState();
   if (party.active.length >= (party.max || PARTY_MAX)) {
-    throw new Error(`The party is full (${party.max || PARTY_MAX}). Send one to the PC first.`);
+    throw new Error(`The party is full (${party.max || PARTY_MAX}). Send one to the roost first.`);
   }
   party.active.push(rappid);
   writeParty(party);

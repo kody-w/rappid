@@ -476,7 +476,7 @@ async function renderParty() {
     cry.addEventListener("click", () => { window.zoo.partyCry(rec.rappid); });
     actions.appendChild(cry);
     const move = element("button", {
-      text: inParty ? "send to PC" : "add to party",
+      text: inParty ? "send to roost" : "add to party",
       type: "button",
       className: inParty ? "" : "primary",
     });
@@ -496,12 +496,12 @@ async function renderParty() {
   partyList.replaceChildren(
     ...(partyView.active.length
       ? partyView.active.map((rec) => row(rec, true))
-      : [element("p", { className: "empty", text: "No rappids in the party. Add one from the PC." })]),
+      : [element("p", { className: "empty", text: "No rappids in the party. Add one from the roost." })]),
   );
   pcList.replaceChildren(
     ...(partyView.pc.length
       ? partyView.pc.map((rec) => row(rec, false))
-      : [element("p", { className: "empty", text: "The PC is empty — hatch rappids with the species engine (see SPEC.md)." })]),
+      : [element("p", { className: "empty", text: "The roost is empty — hatch rappids with the species engine (see SPEC.md)." })]),
   );
 }
 

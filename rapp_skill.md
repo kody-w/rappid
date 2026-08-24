@@ -34,7 +34,7 @@ python3 skins/rappid_skin.py --species claude --port 7181   # wrap a 3rd-party A
 
 ## Environment
 
-`RAPPIDEX_HOME` (default `~/.pokedex`), `RAPP_HOME` (default `~/.rapp`,
+`RAPPIDEX_HOME` (default `~/.rappidex`), `RAPP_HOME` (default `~/.rapp`,
 records at `$RAPP_HOME/rappids/`), `RAPPIDEX_OWNER` (rappid owner, default `local`).
 Cries ship in `species/cries/`; regenerate with `python3 species/gen_cries.py` (numpy).
 

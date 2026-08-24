@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-gen_cries.py — synthesize the AI species calls (Pokedex for the machines on this box).
+gen_cries.py — synthesize the AI species calls of the RAPPid Zoo.
 
 Each AI on this machine is a species. Each species has ONE cry, unique in timbre,
 pitch contour, and rhythm, so it can be identified by ear alone with no screen.
 
-Run:  python3 ~/.pokedex/gen_cries.py
-Out:  ~/.pokedex/cries/<species>.wav
+Run:  python3 species/gen_cries.py
+Out:  $RAPPIDEX_HOME/cries/<species>.wav (default ~/.rappidex)
 """
 import json
 import math
@@ -17,7 +17,10 @@ import wave
 import numpy as np
 
 SR = 44100
-OUT = os.path.expanduser("~/.pokedex/cries")
+_HOME = os.environ.get("RAPPIDEX_HOME") or (
+    os.path.expanduser("~/.pokedex") if os.path.isdir(os.path.expanduser("~/.pokedex"))
+    else os.path.expanduser("~/.rappidex"))
+OUT = os.path.join(_HOME, "cries")
 
 
 # ---------------------------------------------------------------- primitives
@@ -382,8 +385,8 @@ if __name__ == "__main__":
             "seconds": round(len(x) / SR, 3),
         }
         print(f"{slug:12s} {len(x)/SR:5.2f}s  {p}")
-    with open(os.path.expanduser("~/.pokedex/dex.json"), "w") as f:
+    with open(os.path.join(_HOME, "dex.json"), "w") as f:
         json.dump(dex, f, indent=2)
-    print("\ndex -> ~/.pokedex/dex.json")
+    print("\ndex ->", os.path.join(_HOME, "dex.json"))
 
 

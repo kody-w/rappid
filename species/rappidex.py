@@ -45,7 +45,9 @@ import uuid
 from datetime import datetime, timezone
 
 HOME = os.path.expanduser("~")
-DEX_HOME = os.environ.get("RAPPIDEX_HOME") or os.path.join(HOME, ".pokedex")
+_legacy = os.path.join(HOME, ".pokedex")
+DEX_HOME = os.environ.get("RAPPIDEX_HOME") or (
+    _legacy if os.path.isdir(_legacy) else os.path.join(HOME, ".rappidex"))
 _HERE = os.path.dirname(os.path.abspath(__file__))
 CRIES = os.path.join(DEX_HOME, "cries")
 if not os.path.isdir(CRIES) and os.path.isdir(os.path.join(_HERE, "cries")):
@@ -576,6 +578,260 @@ def cmd_holodex(open_it=True):
         subprocess.run(["open", out])
     return out
 
+
+# ─────────────────────────────────────────────── field transfer (companion devices)
+def _party_path():
+    return os.path.join(os.path.dirname(RAPPIDS), "party.json")
+
+def _read_party():
+    try:
+        with open(_party_path()) as f:
+            v = json.load(f)
+        if v.get("schema") == "rappid-party/1" and isinstance(v.get("active"), list):
+            return v
+    except Exception:
+        pass
+    return {"schema": "rappid-party/1", "active": [], "max": 6}
+
+def cmd_party_export(out=None):
+    """Write the active party as a rappid-party-transfer/1 document — the thing
+    you AirDrop to a companion device, and reassimilate when you return."""
+    party = _read_party()
+    recs = {r["rappid"]: r for r in all_records()}
+    members = [recs[i] for i in party["active"] if i in recs]
+    if not members:
+        sys.exit("the party is empty — add rappids first (Party tab, or party.json)")
+    doc = {
+        "schema": "rappid-party-transfer/1",
+        "host": hostslug(),
+        "exported_at": now_iso(),
+        "party": [{k: v for k, v in r.items() if k != "dir"} for r in members],
+    }
+    out = out or os.path.join(os.getcwd(), f"party-{hostslug()}.rappidparty")
+    with open(out, "w") as f:
+        json.dump(doc, f, indent=2)
+    print(f"🎒  party of {len(members)} → {out}")
+    return out
+
+def cmd_party_import(path):
+    """Reassimilate a rappid-party-transfer/1 document from a companion device.
+    Unknown creatures join the roost (records minted from their eggs); the
+    active party becomes the imported one."""
+    with open(os.path.expanduser(path)) as f:
+        doc = json.load(f)
+    if doc.get("schema") != "rappid-party-transfer/1":
+        sys.exit("not a rappid-party-transfer/1 document")
+    have = {r.get("genome_id") for r in all_records()}
+    ids = []
+    for rec in doc.get("party", []):
+        gid = rec.get("genome_id")
+        if gid not in have:
+            rec = dict(rec)
+            rec["dir"] = f"{rec.get('species','wild')}-field-{gid[:8]}"
+            rec.setdefault("lineage", []).append(f"field-return:{doc.get('host','?')}")
+            save_record(rec)
+            print(f"🛬  reassimilated {rec.get('display_name', gid)}")
+        ids.append(rec["rappid"])
+    party = _read_party()
+    party["active"] = ids[: party.get("max", 6)]
+    with open(_party_path(), "w") as f:
+        json.dump(party, f, indent=2)
+    print(f"🎒  active party is now the returning party ({len(party['active'])})")
+
+def cmd_party_qr(out=None):
+    """Emit the QR hotlink payload for the active party: a compact
+    rappid-party-qr/1 capsule (gzip+base64url) a companion scans to load the
+    party instantly. Also writes a self-contained HTML page that renders the QR."""
+    import gzip
+    party = _read_party()
+    recs = {r["rappid"]: r for r in all_records()}
+    members = [recs[i] for i in party["active"] if i in recs]
+    if not members:
+        sys.exit("the party is empty")
+    capsule = {
+        "schema": "rappid-party-qr/1",
+        "host": hostslug(),
+        "party": [{"rappid": r["rappid"], "species": r.get("species"),
+                    "genome_id": r.get("genome_id"), "name": r.get("display_name"),
+                    "rarity": r.get("rarity")} for r in members],
+    }
+    raw = gzip.compress(json.dumps(capsule, separators=(",", ":")).encode())
+    payload = "rappidzoo://party?d=" + base64.urlsafe_b64encode(raw).decode().rstrip("=")
+    print(payload)
+    out = out or os.path.join(os.getcwd(), f"party-{hostslug()}-qr.html")
+    try:
+        import io
+        import qrcode
+        import qrcode.image.svg
+        img = qrcode.make(payload, image_factory=qrcode.image.svg.SvgPathImage,
+                          box_size=14, border=3)
+        buf = io.BytesIO()
+        img.save(buf)
+        svg = buf.getvalue().decode()
+        page = ("<!DOCTYPE html><html><head><meta charset='utf-8'>"
+                "<title>RAPPid party — field hotlink</title>"
+                "<style>body{background:#0e1116;color:#e6edf3;font:15px ui-monospace,monospace;"
+                "display:flex;flex-direction:column;align-items:center;padding:40px}"
+                "svg{background:#fff;border-radius:14px;padding:10px;width:min(76vmin,520px);height:auto}"
+                "h1{color:#ffcf5c;letter-spacing:.08em}p{color:#8d96a0;max-width:56ch;text-align:center}"
+                "</style></head><body><h1>FIELD HOTLINK</h1>"
+                f"<p>Scan with the RAPPid Zoo companion to carry the <b>{hostslug()}</b> "
+                "party into the field. Full genomes travel by AirDrop "
+                "(<code>party export</code>); scanning loads the party instantly.</p>"
+                + svg + "</body></html>")
+        with open(out, "w") as f:
+            f.write(page)
+        print(f"🔳  QR page → {out}")
+    except ImportError:
+        print("(python 'qrcode' package not installed — payload printed above; "
+              "pip install qrcode for the scannable page)")
+    return payload
+
+
+# ─────────────────────────────────────────────── the GODD layer (private save)
+GODD_REPO = os.environ.get("RAPPID_GODD_REPO") or "kody-w/RAPP-Private-Workspace"
+
+def _godd_checkout():
+    d = os.path.join(DEX_HOME, "godd-checkout")
+    if os.path.isdir(os.path.join(d, ".git")):
+        subprocess.run(["git", "-C", d, "pull", "-q", "--rebase"], check=True)
+    else:
+        subprocess.run(["git", "clone", "-q", f"https://github.com/{GODD_REPO}.git", d],
+                       check=True)
+    return d
+
+def _godd_key():
+    p = os.path.join(DEX_HOME, "keys", "godd.key")
+    if not os.path.exists(p):
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        with open(p, "wb") as f:
+            f.write(base64.urlsafe_b64encode(os.urandom(32)))
+        os.chmod(p, 0o600)
+        print(f"🔑  minted device key → {p}  (NEVER leaves the device except by hand)")
+    return p
+
+def cmd_godd_save():
+    """Mirror this device's creatures + party into the private GODD repo."""
+    import shutil
+    d = _godd_checkout()
+    dest = os.path.join(d, "godd", "rappids", hostslug())
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    if os.path.isdir(dest):
+        shutil.rmtree(dest)
+    shutil.copytree(RAPPIDS, dest)
+    pp = _party_path()
+    if os.path.exists(pp):
+        shutil.copy(pp, os.path.join(dest, "party.json"))
+    subprocess.run(["git", "-C", d, "add", "-A"], check=True)
+    r = subprocess.run(["git", "-C", d, "commit", "-q", "-m",
+                        f"godd save: {hostslug()} rappids + party"], capture_output=True, text=True)
+    if r.returncode == 0:
+        subprocess.run(["git", "-C", d, "push", "-q"], check=True)
+        print(f"⛅  GODD save pushed → {GODD_REPO}/godd/rappids/{hostslug()}")
+    else:
+        print("⛅  GODD already current — nothing to save")
+
+def cmd_godd_pull(host=None):
+    """Reassimilate a host's party straight from the private GODD repo (cloud
+    pull — the companion path that needs no QR, only repo access)."""
+    d = _godd_checkout()
+    base = os.path.join(d, "godd", "rappids")
+    if not os.path.isdir(base):
+        sys.exit("the GODD repo has no saves yet — run `party godd save` on a device first")
+    hosts = sorted(os.listdir(base))
+    host = host or (hosts[0] if len(hosts) == 1 else None)
+    if not host or host not in hosts:
+        sys.exit(f"pick a host with --host: {', '.join(hosts)}")
+    src_dir = os.path.join(base, host)
+    doc = {"schema": "rappid-party-transfer/1", "host": host,
+           "exported_at": now_iso(), "party": []}
+    try:
+        with open(os.path.join(src_dir, "party.json")) as f:
+            active = json.load(f).get("active", [])
+    except OSError:
+        active = []
+    for entry in sorted(os.listdir(src_dir)):
+        p = os.path.join(src_dir, entry, "rappid.json")
+        if os.path.exists(p):
+            with open(p) as f:
+                rec = json.load(f)
+            if not active or rec.get("rappid") in active:
+                doc["party"].append(rec)
+    tmp = os.path.join(DEX_HOME, "godd-pull.rappidparty")
+    with open(tmp, "w") as f:
+        json.dump(doc, f)
+    cmd_party_import(tmp)
+    os.remove(tmp)
+
+def cmd_godd_seal(path=None):
+    """Sealed tier: encrypt the party transfer with the device key and place the
+    capsule in the GODD vault. Contributors without the hand-carried key hold
+    ciphertext."""
+    key = _godd_key()
+    src_file = path or cmd_party_export(os.path.join(DEX_HOME, "party-to-seal.rappidparty"))
+    d = _godd_checkout()
+    vault = os.path.join(d, "godd", "vault")
+    os.makedirs(vault, exist_ok=True)
+    out = os.path.join(vault, f"party-{hostslug()}.sealed")
+    subprocess.run(["openssl", "enc", "-aes-256-cbc", "-pbkdf2", "-salt",
+                    "-pass", f"file:{key}", "-in", src_file, "-out", out], check=True)
+    if src_file.endswith("party-to-seal.rappidparty"):
+        os.remove(src_file)
+    subprocess.run(["git", "-C", d, "add", "-A"], check=True)
+    r = subprocess.run(["git", "-C", d, "commit", "-q", "-m",
+                        f"godd vault: sealed party capsule from {hostslug()}"],
+                       capture_output=True, text=True)
+    if r.returncode == 0:
+        subprocess.run(["git", "-C", d, "push", "-q"], check=True)
+    print(f"🔐  sealed capsule → {GODD_REPO}/godd/vault/{os.path.basename(out)}")
+
+def cmd_godd_unseal(name=None, out=None):
+    key = _godd_key()
+    d = _godd_checkout()
+    vault = os.path.join(d, "godd", "vault")
+    capsules = sorted(os.listdir(vault)) if os.path.isdir(vault) else []
+    if not capsules:
+        sys.exit("the vault is empty")
+    name = name or (capsules[0] if len(capsules) == 1 else None)
+    if not name or name not in capsules:
+        sys.exit(f"pick a capsule: {', '.join(capsules)}")
+    out = out or os.path.join(os.getcwd(), name.replace(".sealed", ".rappidparty"))
+    r = subprocess.run(["openssl", "enc", "-d", "-aes-256-cbc", "-pbkdf2",
+                        "-pass", f"file:{key}", "-in", os.path.join(vault, name),
+                        "-out", out], capture_output=True, text=True)
+    if r.returncode != 0:
+        sys.exit("unseal failed — wrong or missing device key (get it by sneakernet: `party keyqr` on the sealing device)")
+    print(f"🔓  unsealed → {out}   (import with: party import {out})")
+
+def cmd_godd_keyqr(out=None):
+    """Render the device key as a QR page — the sneakernet hand-transfer."""
+    key = open(_godd_key()).read().strip()
+    payload = f"rappidzoo://key?k={key}"
+    out = out or os.path.join(os.getcwd(), f"godd-key-{hostslug()}.html")
+    try:
+        import io
+        import qrcode
+        import qrcode.image.svg
+        img = qrcode.make(payload, image_factory=qrcode.image.svg.SvgPathImage,
+                          box_size=14, border=3)
+        buf = io.BytesIO(); img.save(buf)
+        page = ("<!DOCTYPE html><html><head><meta charset='utf-8'><title>GODD key — hand-carry only</title>"
+                "<style>body{background:#0e1116;color:#e6edf3;font:15px ui-monospace,monospace;display:flex;"
+                "flex-direction:column;align-items:center;padding:40px}svg{background:#fff;border-radius:14px;"
+                "padding:10px;width:min(70vmin,480px);height:auto}h1{color:#ff5d3c;letter-spacing:.08em}"
+                "p{color:#8d96a0;max-width:56ch;text-align:center}</style></head><body>"
+                "<h1>⚠ SNEAKERNET KEY</h1><p>This unlocks the sealed vault. Show it ONLY to your own "
+                "companion device, in person. Never screenshot it into a chat, never commit it, never "
+                "email it. Close this page when the scan is done.</p>"
+                + buf.getvalue().decode() + "</body></html>")
+        with open(out, "w") as f:
+            f.write(page)
+        os.chmod(out, 0o600)
+        print(f"🔑  key QR (hand-carry only) → {out}")
+    except ImportError:
+        print(payload)
+    return out
+
 # ─────────────────────────────────────────────── main
 def main():
     ap = argparse.ArgumentParser(prog="rappidex")
@@ -589,6 +845,8 @@ def main():
     p = sub.add_parser("convert"); p.add_argument("key"); p.add_argument("species")
     p = sub.add_parser("fuse"); p.add_argument("a"); p.add_argument("b"); p.add_argument("species", nargs="?")
     p = sub.add_parser("holodex"); p.add_argument("--no-open", action="store_true")
+    p = sub.add_parser("party"); p.add_argument("verb", choices=["export", "import", "qr"]); p.add_argument("path", nargs="?"); p.add_argument("-o", "--out")
+    p = sub.add_parser("godd"); p.add_argument("verb", choices=["save", "pull", "seal", "unseal", "keyqr"]); p.add_argument("name", nargs="?"); p.add_argument("--host"); p.add_argument("-o", "--out")
     a = ap.parse_args()
     os.makedirs(RAPPIDS, exist_ok=True)
     if a.cmd == "hatch": cmd_hatch(a.species)
@@ -600,6 +858,18 @@ def main():
     elif a.cmd == "convert": cmd_convert(a.key, a.species)
     elif a.cmd == "fuse": cmd_fuse(a.a, a.b, a.species)
     elif a.cmd == "holodex": cmd_holodex(open_it=not a.no_open)
+    elif a.cmd == "party":
+        if a.verb == "export": cmd_party_export(a.out or a.path)
+        elif a.verb == "import":
+            if not a.path: sys.exit("party import needs a .rappidparty path")
+            cmd_party_import(a.path)
+        else: cmd_party_qr(a.out or a.path)
+    elif a.cmd == "godd":
+        if a.verb == "save": cmd_godd_save()
+        elif a.verb == "pull": cmd_godd_pull(a.host)
+        elif a.verb == "seal": cmd_godd_seal(a.name)
+        elif a.verb == "unseal": cmd_godd_unseal(a.name, a.out)
+        else: cmd_godd_keyqr(a.out)
 
 if __name__ == "__main__":
     main()

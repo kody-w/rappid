@@ -89,8 +89,8 @@ into any zoo as species `wild`.
 
 ## 6. The cry contract
 
-- **One cry per species** — as recognizable as a Pokémon's call. Reference cries
-  ship in `~/.pokedex/cries/*.wav` (synthesized by `gen_cries.py`; ~0.5–1.2 s).
+- **One cry per species** — instantly recognizable, one per species. Reference cries
+  ship in `species/cries/*.wav` (installed: `$RAPPIDEX_HOME/cries/`) (synthesized by `gen_cries.py`; ~0.5–1.2 s).
 - **Individual accent**: playback rate `0.94 + r()*0.14` and volume `0.75 + r()*0.25`
   where `r = mkRng(genome_id)`. Same creature, same accent, every time, everywhere.
 - **When to cry**: on **invoke** (announce), on **done** (chirp), and the shared
@@ -126,7 +126,43 @@ provider's CLI/API is named. A conforming skin MUST:
 Reference: `skins/rappid_skin.py` + `skins/skins.json` (command templates per
 species; `{prompt}` = shell-quoted user_input).
 
-## 9. Compliance checklist
+## 9. Field transfer (companion devices)
+
+The party travels. Three documents, one rule: **the full genome moves by file,
+the hotlink moves by light, the key moves by hand.**
+
+- **`rappid-party-transfer/1`** (`.rappidparty`) — the party's full records
+  (eggs included), AirDropped or otherwise carried to a companion device.
+  Reassimilation on return: unknown creatures join the roost (minted from their
+  eggs), and the active party becomes the returning party.
+- **`rappid-party-qr/1`** — a compact capsule (`rappidzoo://party?d=` +
+  base64url(gzip(JSON))) carrying identities only: rappid, species, genome_id,
+  name, rarity. A companion scans it to load the party instantly ("hotlink");
+  genomes follow by file or GODD pull.
+- Verbs: `party export [-o f]` · `party import <f>` · `party qr [-o page.html]`.
+
+## 10. The GODD layer (private save, cloud pull)
+
+A keeper MAY bind the zoo to a **private GODD repository** — source control as
+the god-layer save of the on-device creatures:
+
+- `godd save` mirrors `$RAPP_HOME/rappids/` + `party.json` into the private
+  repo under `godd/rappids/<host>/`, committed and pushed.
+- `godd pull [--host h]` reassimilates a host's party from the private repo —
+  a companion with repository access pulls the party **directly from the
+  cloud**, no QR needed. Public documents may LINK to the GODD repo; the links
+  resolve only for accounts granted access. Authorization is the forge's
+  (GitHub's), never the zoo's.
+- **Sealed tier (sneakernet key):** `godd seal` encrypts the transfer document
+  with a key that lives ONLY on the device (`$RAPPIDEX_HOME/keys/godd.key`,
+  never committed); the sealed capsule lands in `godd/vault/`. `godd keyqr`
+  renders the key for AirDrop/QR hand-transfer. A contributor without the
+  hand-carried key holds ciphertext. `godd unseal` requires the key file.
+
+Rule: records and eggs in the GODD repo follow §11.6 (no secrets, no PII);
+the sealed tier exists precisely for what must not be readable even there.
+
+## 11. Compliance checklist
 
 1. PRNG + genome_id reproduce the test vectors byte-exactly.
 2. Identity is Eternity-form rapp/1; hash from a fresh UUID; re-hatch idempotent.
