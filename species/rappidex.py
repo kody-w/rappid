@@ -428,8 +428,33 @@ def cry_params(rec):
     vol = 0.75 + r() * 0.25
     return rate, vol
 
+MUTE_FLAG = os.path.join(RAPP_HOME, "mute")
+
+def is_muted():
+    """Cries are muted by `rappidex mute` (a flag in the rapp home, shared by
+    every dex on the device) or RAPPID_MUTE=1 — for demos, where a surprise
+    roar mid-take is worse than no roar at all. Mute silences AUDIO only:
+    every command still runs, prints, and records exactly the same."""
+    return (os.environ.get("RAPPID_MUTE", "") not in ("", "0")
+            or os.path.exists(MUTE_FLAG))
+
+def cmd_mute(on=True):
+    if on:
+        os.makedirs(RAPP_HOME, exist_ok=True)
+        with open(MUTE_FLAG, "w") as f:
+            f.write(now_iso() + "\n")
+        print(f"🔇  rappid cries muted (rappidex unmute to restore) · {MUTE_FLAG}")
+    else:
+        try:
+            os.remove(MUTE_FLAG)
+        except OSError:
+            pass
+        print("🔊  rappid cries unmuted")
+
 def _player_cmd(path, rate, vol):
     """Best available CLI audio player, per platform. None = stay silent."""
+    if is_muted():
+        return None
     from shutil import which
     if sys.platform == "darwin" and which("afplay"):
         return ["afplay", "-r", f"{rate:.3f}", "-v", f"{vol:.2f}", path]
@@ -1956,6 +1981,7 @@ def main():
     sub.add_parser("frames").add_argument("key")
     p = sub.add_parser("molt"); p.add_argument("key"); p.add_argument("other", nargs="?")
     p = sub.add_parser("roar"); p.add_argument("species"); p.add_argument("--done", action="store_true")
+    sub.add_parser("mute"); sub.add_parser("unmute")
     sub.add_parser("list")
     sub.add_parser("show").add_argument("key")
     p = sub.add_parser("export"); p.add_argument("key"); p.add_argument("-o", "--out")
@@ -2025,6 +2051,8 @@ def main():
                       f"(fingerprint {b['transcript']['sha256'][:12]}) — pull it with `godd pull`")
         sys.exit(0 if good else 1)
     elif a.cmd == "roar": cmd_roar(a.species, done=a.done)
+    elif a.cmd == "mute": cmd_mute(True)
+    elif a.cmd == "unmute": cmd_mute(False)
     elif a.cmd == "list": cmd_list()
     elif a.cmd == "show": cmd_show(a.key)
     elif a.cmd == "export": cmd_export(a.key, a.out)

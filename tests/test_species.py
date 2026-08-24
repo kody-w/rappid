@@ -543,4 +543,19 @@ back_frames = molting.read_frames(rx._record_dir_of(back), back)
 ok("summoning your own creature keeps your local frames' hosts",
    any(f.get("host") for f in back_frames))
 
+# mute: audio silenced, everything else identical (demo-safety)
+ok("unmuted, a player command exists (or this box has no player at all)",
+   not rx.is_muted())
+rx.cmd_mute(True)
+ok("mute is a flag in the rapp home", os.path.exists(rx.MUTE_FLAG) and rx.is_muted())
+ok("muted, the player command is None — no audio process ever spawns",
+   rx._player_cmd(__file__, 1.0, 1.0) is None)
+rx.cmd_mute(False)
+ok("unmute removes the flag", not os.path.exists(rx.MUTE_FLAG) and not rx.is_muted())
+os.environ["RAPPID_MUTE"] = "1"
+ok("RAPPID_MUTE=1 silences without touching the flag", rx.is_muted())
+os.environ["RAPPID_MUTE"] = "0"
+ok("RAPPID_MUTE=0 does not", not rx.is_muted())
+del os.environ["RAPPID_MUTE"]
+
 print(f"\nSPECIES TESTS: {PASS}/{PASS} PASS")

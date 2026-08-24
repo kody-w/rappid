@@ -39,6 +39,7 @@ When Claude itself should be a zoo citizen on this machine (the on-ramps: `SKILL
 python3 species/rappidex.py hatch claude          # 🥚→🐣 first invocation hatches this host's claude rappid
 python3 species/rappidex.py roar claude           # announce on invoke (SessionStart hook)
 python3 species/rappidex.py roar claude --done    # chirp on completion (Stop hook)
+python3 species/rappidex.py mute                  # 🔇 demo-safe: silence every cry device-wide (unmute restores)
 python3 species/rappidex.py verify claude         # re-check the seal + burned-in birthday
 ```
 
