@@ -171,6 +171,62 @@ the god-layer save of the on-device creatures:
 Rule: records and eggs in the GODD repo follow §14.6 (no secrets, no PII);
 the sealed tier exists precisely for what must not be readable even there.
 
+## 11. The DOGG federation (public face, global summon)
+
+The GODD's complement: every creature has a **DOGG** — its public front door
+(`rappid-frontdoor/1`), holding everything needed to know, render, and
+reassemble it, and nothing that was ever private. The zoo is the client of a
+**federated network of DOGG repositories**: any public GitHub repository
+carrying this layout is a DOGG repo, and every file rides
+`raw.githubusercontent.com` — public, unauthenticated, no API:
+
+```text
+rappidverse/index.json      — { doors: { <chant>: {chant, rappid, species,
+                              door_sha256, door_bytes, …} } }
+rappidverse/doors/<chant>.json   — the full front door (rappid-frontdoor/1)
+rappidverse/peers.json      — { peers: ["owner/repo", …] } — federation spreads here
+```
+
+**Trust (rapp/1 doctrine, not reinvented).** The index rides a mutable branch
+and is **discovery-only**; every index entry pins its door's exact bytes
+(`door_sha256`, `door_bytes`). A federation-resolved summon MUST verify the
+fetched door against its pin and fail closed on mismatch (torn publish,
+stale cache, tamper) — the same discipline as the zoo estate's global loads.
+The door's `egg` is the §5 egg, its identity the §3 rappid, its frames §15
+frames: the federation carries rapp/1 documents, it does not define new ones.
+
+**The seven-word summon.** A creature's chant is seven words drawn from
+`sha256(rappid)` over the normative 128-word vocabulary (`CHANT_WORDS` in the
+reference engine — fixed order, append-only): word *i* = `WORDS[digest[i] mod
+128]`, `i ∈ 0..6`, joined by `-`. Deterministic and permanent: the same seven
+words summon the same creature from ANY client, forever. A spoken chant
+(spaces, any case) MUST normalize to the hyphenated lowercase form.
+
+**Federation.** A client keeps a local peer list (`federation.json`) and MAY
+`sync`: fetch each peer's `index.json`, then walk `peers.json` transitively
+(bounded depth and repo count) — so federating with one repo reaches the
+network it federates with. The synced cache maps chant → repo; the first repo
+answering a chant wins and later repos never override. `publish` writes the
+publishing device's peer list into the repo's `peers.json` (union), so the
+federation spreads through every published repo, from any client.
+
+**Summon = instant self-assembly.** Saying the chant fetches the door, unpacks
+its egg, reassembles the creature under its ORIGINAL rappid (a summoned
+creature keeps its identity — never re-minted), and merges the door's public
+frames with whatever frames this device already holds (§15 molt semantics).
+
+**A zoo is a rapp neighborhood.** The local roster a summon assembles into is
+not a new construct: a zoo serves the rapp/1 wire seam (§8 — `POST /chat`,
+exact success and refusal envelopes), so an estate attaches a zoo exactly as
+it attaches any neighborhood, and a summoned creature lands as a citizen of
+that neighborhood. Federation moves the data; rapp/1 moves the conversation.
+
+**The GODD stays home.** Only the front door travels. The private layer —
+GODD saves, sealed vault, local anchors' bytes, transcripts — never enters a
+DOGG repo; a summoned DOGG composes with the *local* device's GODD layer on
+arrival. One creature, two faces: the DOGG is what the world can call; the
+GODD is what only its keeper holds.
+
 ## 12. The Rite of Hatching (an LLM must attest a birth)
 
 **A rappid without a sealed birth is not a rappid.** The zoo cannot mint one

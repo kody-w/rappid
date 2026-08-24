@@ -339,4 +339,54 @@ ok("the anchor survives every fold",
    molting.fold([molting.birth_frame(anchored)])["anchor"]["sha256"]
    == anchored["birth"]["anchor"]["sha256"])
 
+# ── DOGG federation: the seven-word summon and global self-assembly (SPEC §11) ──
+dogg_rec, _ = rx.cmd_hatch("claude")
+chant = rx.chant_for(dogg_rec)
+ok("the summon is exactly seven words", len(chant.split("-")) == 7)
+ok("every summon word is normative vocabulary",
+   all(w in rx.CHANT_WORDS for w in chant.split("-")))
+ok("the chant is deterministic and permanent", chant == rx.chant_for(dogg_rec))
+ok("the vocabulary is 128 unique words",
+   len(rx.CHANT_WORDS) == 128 and len(set(rx.CHANT_WORDS)) == 128)
+ok("different creatures chant differently",
+   chant != rx.chant_for({"rappid": "rappid:@test/other:" + "b" * 64}))
+
+door = rx.cmd_dogg_publish(dogg_rec["rappid"], repo=None, push=False)
+ok("publishing writes a local front door under the chant",
+   os.path.exists(os.path.join(rx.DEX_HOME, "dogg", f"{chant}.json")))
+ok("the front door carries the seven-word chant", door["chant"] == chant)
+ok("the door never carries the private layer",
+   "anchor_held_at" not in json.dumps(door))
+
+# summoning from the local door on a "different device" (fresh rapp home)
+prev_home = rx.RAPP_HOME
+rx.RAPP_HOME = os.path.join(TMP, "rapp-device2")
+rx.RAPPIDS = os.path.join(rx.RAPP_HOME, "rappids")
+os.makedirs(rx.RAPPIDS, exist_ok=True)
+summoned = rx.cmd_dogg_summon(chant)
+ok("a summoned creature self-assembles from the door", summoned is not None)
+ok("a summoned creature keeps its original identity",
+   summoned["rappid"] == dogg_rec["rappid"])
+ok("summoning is idempotent (same creature answers again)",
+   rx.cmd_dogg_summon(chant)["rappid"] == dogg_rec["rappid"])
+rx.RAPP_HOME = prev_home
+rx.RAPPIDS = os.path.join(prev_home, "rappids")
+
+# federation plumbing (no network: the cache is the contract)
+ok("a fresh client is seeded with the zoo's home repo",
+   rx._federation_peers() == ["kody-w/rappid"])
+os.makedirs(rx.DEX_HOME, exist_ok=True)
+with open(rx.FEDERATION_FILE, "w") as f:
+    json.dump({"schema": "rappid-federation/1", "peers": ["kody-w/rappterverse"]}, f)
+ok("the federation remembers its peers", rx._federation_peers() == ["kody-w/rappterverse"])
+with open(rx.RAPPIDVERSE_CACHE, "w") as f:
+    json.dump({"schema": "rappid-rappidverse-cache/1",
+               "doors": {chant: {"chant": chant, "repo": "kody-w/rappterverse",
+                                 "door_sha256": "f" * 64}}}, f)
+ok("a synced chant resolves to its repo's raw door plus its byte pin",
+   rx._resolve_chant(chant)
+   == (f"https://raw.githubusercontent.com/kody-w/rappterverse/main/rappidverse/doors/{chant}.json",
+       "f" * 64))
+ok("an unknown chant resolves to nothing", rx._resolve_chant("no-such-chant") is None)
+
 print(f"\nSPECIES TESTS: {PASS}/{PASS} PASS")

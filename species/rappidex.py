@@ -1297,16 +1297,37 @@ def cmd_bless(key, midwife=None, attempts=3):
 # private layer the summoner holds is laid over it afterwards. Two faces, one
 # creature — and the private one never travels.
 DOGG_SCHEMA = "rappid-frontdoor/1"
+# The normative summon vocabulary (SPEC §11). 128 words, fixed order, append-only:
+# a chant is seven of these drawn from the creature's identity hash, so the
+# same seven words summon the same creature from ANY client in the federation.
 CHANT_WORDS = ["ember", "hollow", "quartz", "tidal", "vessel", "marrow", "lantern",
                "thicket", "basalt", "cinder", "willow", "fathom", "granite", "sable",
-               "harbor", "kestrel", "amber", "furrow", "lichen", "brindle"]
+               "harbor", "kestrel", "amber", "furrow", "lichen", "brindle",
+               "aspen", "bramble", "cobalt", "drift", "eddy", "fenlark", "gully",
+               "heron", "inkcap", "juniper", "knoll", "loam", "mica", "nettle",
+               "osprey", "petrel", "quill", "rushes", "shale", "tarn",
+               "umber", "vale", "wren", "yarrow", "zephyr", "alder", "briar",
+               "cairn", "dune", "elm", "flint", "gorse", "hazel", "iris",
+               "jetty", "kelp", "larch", "moss", "north", "otter",
+               "pine", "quarry", "reed", "spruce", "thorn", "upland", "vetch",
+               "wharf", "yew", "arbor", "birch", "cedar", "delta", "ester",
+               "fjord", "glade", "heath", "islet", "jasper", "karst", "ledge",
+               "mesa", "nadir", "oxbow", "prairie", "quiver", "ridge", "steppe",
+               "trench", "ursa", "verge", "wold", "xenia", "yonder", "zenith",
+               "anvil", "bluff", "crag", "dell", "ebb", "ford", "grove",
+               "hearth", "ivy", "jade", "kiln", "lark", "mire", "nook",
+               "orchid", "pond", "quay", "rill", "sedge", "tor", "usher",
+               "vine", "weir", "xylem", "yield", "zeal", "atlas", "beacon",
+               "cove", "dusk", "frost", "gale", "haven"]
+assert len(CHANT_WORDS) == 128, len(CHANT_WORDS)
 
 def chant_for(rec):
-    """A phrase a keeper can say out loud to call this creature from anywhere.
-    Deterministic from its identity, so the chant is as permanent as the rappid."""
+    """The seven-word summon: a phrase a keeper can say out loud to call this
+    creature from anywhere in the federation. Seven words drawn from the
+    identity hash over the 128-word normative vocabulary — deterministic, so
+    the chant is as permanent as the rappid itself."""
     h = hashlib.sha256(rec["rappid"].encode()).digest()
-    words = [CHANT_WORDS[h[i] % len(CHANT_WORDS)] for i in range(3)]
-    return "-".join(words) + "-" + h[3:5].hex()
+    return "-".join(CHANT_WORDS[h[i] % 128] for i in range(7))
 
 def front_door(rec, frames):
     """The public projection: everything needed to know and render the creature,
@@ -1380,8 +1401,19 @@ def cmd_dogg_publish(key, repo=None, push=True):
                            check=True)
         doors = os.path.join(checkout, "rappidverse", "doors")
         os.makedirs(doors, exist_ok=True)
-        with open(os.path.join(doors, f"{door['chant']}.json"), "w") as f:
-            json.dump(door, f, indent=2)
+        door_bytes = (json.dumps(door, indent=2) + "\n").encode()
+        with open(os.path.join(doors, f"{door['chant']}.json"), "wb") as f:
+            f.write(door_bytes)
+        peers_path = os.path.join(checkout, "rappidverse", "peers.json")
+        try:
+            with open(peers_path) as f:
+                published_peers = set(json.load(f).get("peers", []))
+        except OSError:
+            published_peers = set()
+        published_peers.update(p for p in _federation_peers() if p != repo)
+        with open(peers_path, "w") as f:
+            json.dump({"schema": "rappid-federation/1",
+                       "peers": sorted(published_peers)}, f, indent=2)
         index_path = os.path.join(checkout, "rappidverse", "index.json")
         try:
             with open(index_path) as f:
@@ -1389,9 +1421,14 @@ def cmd_dogg_publish(key, repo=None, push=True):
         except OSError:
             index = {"schema": "rappid-rappidverse/1", "doors": {}}
         index["doors"][door["chant"]] = {
+            "chant": door["chant"],
             "rappid": door["rappid"], "species": door["species"],
             "display_name": door["display_name"], "standing": door["life"]["standing"],
             "published_at": door["published_at"],
+            # rapp/1 trust doctrine: the index (mutable, discovery-only) pins
+            # the door's exact bytes; a summon verifies before assembling.
+            "door_sha256": hashlib.sha256(door_bytes).hexdigest(),
+            "door_bytes": len(door_bytes),
         }
         with open(index_path, "w") as f:
             json.dump(index, f, indent=2)
@@ -1415,26 +1452,44 @@ def cmd_dogg_summon(chant, repo=None):
     """Say the chant anywhere: fetch the public face, then lay whatever private
     layer this device holds over the top."""
     source = chant
+    pin = None   # set when the federation index pins the door's bytes
     if not chant.startswith("http"):
-        repo = repo or os.environ.get("RAPPID_DOGG_REPO")
+        chant = chant.strip().lower().replace(" ", "-")   # a spoken chant works too
         local_path = os.path.join(DEX_HOME, "dogg", f"{chant}.json")
         if os.path.exists(local_path):
             source = local_path
-        elif repo:
+        elif repo or os.environ.get("RAPPID_DOGG_REPO"):
+            repo = repo or os.environ.get("RAPPID_DOGG_REPO")
             source = (f"https://raw.githubusercontent.com/{repo}/main/rappidverse/doors/"
                       f"{chant}.json")
         else:
-            sys.exit("no front door for that chant here — pass --repo owner/name "
-                     "or RAPPID_DOGG_REPO to reach the rappidverse")
+            # the federation: cached first, then one live sync before giving up
+            resolved = _resolve_chant(chant)
+            if not resolved:
+                cmd_dogg_sync(quiet=True)
+                resolved = _resolve_chant(chant)
+            if not resolved:
+                sys.exit("no door answers that chant — federate with a DOGG repo "
+                         "(rappidex dogg federate owner/name) or pass --repo")
+            source, pin = resolved
     print(f"🕯  chanting “{chant}”…")
     try:
         if source.startswith("http"):
             import urllib.request
             with urllib.request.urlopen(source, timeout=30) as r:
-                door = json.load(r)
+                raw_bytes = r.read()
         else:
-            with open(source) as f:
-                door = json.load(f)
+            with open(source, "rb") as f:
+                raw_bytes = f.read()
+        # rapp/1 trust doctrine: a federation-resolved door is loaded ONLY if
+        # its bytes match the index pin — a mismatch (torn publish, tamper,
+        # stale cache) fails closed; re-sync and chant again.
+        if pin and hashlib.sha256(raw_bytes).hexdigest() != pin:
+            sys.exit("the door's bytes do not match the federation's pin — "
+                     "fail closed (rappidex dogg sync, then chant again)")
+        door = json.loads(raw_bytes)
+    except SystemExit:
+        raise
     except Exception as e:
         sys.exit(f"the chant found nothing: {e}")
     if door.get("schema") != DOGG_SCHEMA:
@@ -1478,6 +1533,118 @@ def cmd_dogg_summon(chant, repo=None):
               f"never carried — GODD stays yours")
     play_cry(rec)
     return rec
+
+# ─────────────────────────────────────────────── the DOGG federation (SPEC §11)
+# The rappidverse is federated: any public GitHub repo carrying the layout
+#   rappidverse/index.json    — chant → door summary
+#   rappidverse/doors/<chant>.json
+#   rappidverse/peers.json    — repos this repo federates with
+# is a DOGG repo. Peers spread transitively, all data rides raw.githubusercontent
+# (public, unauthenticated), and a chant resolves from ANY client that syncs.
+# What travels is only ever the front door (the DOGG); the private layer (GODD)
+# never leaves the device it lives on.
+FEDERATION_FILE = os.path.join(DEX_HOME, "federation.json")
+RAPPIDVERSE_CACHE = os.path.join(DEX_HOME, "rappidverse-cache.json")
+FEDERATION_MAX_REPOS = 64
+FEDERATION_DEPTH = 2
+
+# The seed of the federation: a client with no federation of its own reaches
+# the zoo's home repo, which is itself a DOGG repo. Any client may override by
+# writing its own federation.json — the seed is a starting point, not a center.
+FEDERATION_SEED = ["kody-w/rappid"]
+
+def _federation_peers():
+    try:
+        with open(FEDERATION_FILE) as f:
+            peers = json.load(f).get("peers", [])
+    except OSError:
+        return list(FEDERATION_SEED)
+    return [p for p in peers if re.fullmatch(r"[\w.-]+/[\w.-]+", p)]
+
+def _raw_url(repo, path):
+    return f"https://raw.githubusercontent.com/{repo}/main/rappidverse/{path}"
+
+def _fetch_json(url, timeout=20):
+    import urllib.request
+    with urllib.request.urlopen(url, timeout=timeout) as r:
+        return json.load(r)
+
+def cmd_dogg_federate(repo):
+    """Join a DOGG repo to this device's federation."""
+    if not re.fullmatch(r"[\w.-]+/[\w.-]+", repo or ""):
+        sys.exit("a peer is owner/name of a public GitHub repo")
+    peers = _federation_peers()
+    if repo in peers:
+        print(f"already federated with {repo}")
+        return peers
+    try:
+        index = _fetch_json(_raw_url(repo, "index.json"))
+        doors = len(index.get("doors", {}))
+        print(f"🤝  {repo} answers — {doors} door(s) in its rappidverse")
+    except Exception as e:
+        print(f"⚠️  {repo} has no reachable rappidverse yet ({e}) — federating anyway")
+    peers.append(repo)
+    os.makedirs(DEX_HOME, exist_ok=True)
+    with open(FEDERATION_FILE, "w") as f:
+        json.dump({"schema": "rappid-federation/1", "peers": peers}, f, indent=2)
+    print(f"    federation: {', '.join(peers)}")
+    return peers
+
+def cmd_dogg_sync(quiet=False):
+    """Walk the federation (transitively, bounded) and cache every reachable
+    door, so any chant resolves from this device without naming a repo."""
+    seen, queue = [], list(_federation_peers())
+    repo_env = os.environ.get("RAPPID_DOGG_REPO")
+    if repo_env and repo_env not in queue:
+        queue.insert(0, repo_env)
+    cache = {"schema": "rappid-rappidverse-cache/1", "synced_at": now_iso(),
+             "repos": [], "doors": {}}
+    depth_left = {r: FEDERATION_DEPTH for r in queue}
+    while queue and len(seen) < FEDERATION_MAX_REPOS:
+        repo = queue.pop(0)
+        if repo in seen:
+            continue
+        seen.append(repo)
+        try:
+            index = _fetch_json(_raw_url(repo, "index.json"))
+        except Exception as e:
+            if not quiet:
+                print(f"    {repo}: unreachable ({e})")
+            continue
+        cache["repos"].append(repo)
+        for chant, meta in (index.get("doors") or {}).items():
+            # first repo to answer for a chant wins; later repos never override
+            cache["doors"].setdefault(chant, {**(meta or {}), "repo": repo})
+        if depth_left.get(repo, 0) > 0:
+            try:
+                more = _fetch_json(_raw_url(repo, "peers.json")).get("peers", [])
+            except Exception:
+                more = []
+            for peer in more:
+                if re.fullmatch(r"[\w.-]+/[\w.-]+", str(peer)) and peer not in seen:
+                    depth_left.setdefault(peer, depth_left[repo] - 1)
+                    queue.append(peer)
+    os.makedirs(DEX_HOME, exist_ok=True)
+    with open(RAPPIDVERSE_CACHE, "w") as f:
+        json.dump(cache, f, indent=2)
+    if not quiet:
+        print(f"🌍  rappidverse synced — {len(cache['doors'])} door(s) "
+              f"across {len(cache['repos'])} repo(s)")
+    return cache
+
+def _resolve_chant(chant):
+    """chant → (raw door URL, sha256 pin) via the synced federation cache."""
+    try:
+        with open(RAPPIDVERSE_CACHE) as f:
+            cache = json.load(f)
+    except OSError:
+        return None
+    meta = (cache.get("doors") or {}).get(chant)
+    if not meta or not meta.get("repo"):
+        return None
+    return (_raw_url(meta["repo"], f"doors/{chant}.json"),
+            meta.get("door_sha256"))
+
 
 # ─────────────────────────────────────────────── the GODD layer (private save)
 GODD_REPO = os.environ.get("RAPPID_GODD_REPO") or "kody-w/RAPP-Private-Workspace"
@@ -1644,8 +1811,9 @@ def main():
     p.add_argument("kind", choices=sorted(molting.MUTATION_KINDS)); p.add_argument("note", nargs="?", default="")
     p.add_argument("--anchor", help="a file, link or note this mutation came from")
     p.add_argument("--anchor-title")
-    p = sub.add_parser("dogg"); p.add_argument("verb", choices=["publish", "summon", "chant"])
-    p.add_argument("key"); p.add_argument("--repo"); p.add_argument("--no-push", action="store_true")
+    p = sub.add_parser("dogg")
+    p.add_argument("verb", choices=["publish", "summon", "chant", "federate", "peers", "sync"])
+    p.add_argument("key", nargs="?"); p.add_argument("--repo"); p.add_argument("--no-push", action="store_true")
     sub.add_parser("frames").add_argument("key")
     p = sub.add_parser("molt"); p.add_argument("key"); p.add_argument("other", nargs="?")
     p = sub.add_parser("roar"); p.add_argument("species"); p.add_argument("--done", action="store_true")
@@ -1674,8 +1842,15 @@ def main():
     elif a.cmd == "mutate":
         cmd_mutate(a.key, a.kind, a.note, anchor=a.anchor, anchor_title=a.anchor_title)
     elif a.cmd == "dogg":
+        if a.verb in ("publish", "summon", "chant") and not a.key:
+            sys.exit(f"dogg {a.verb} needs a rappid key or chant")
         if a.verb == "publish": cmd_dogg_publish(a.key, a.repo, push=not a.no_push)
         elif a.verb == "summon": cmd_dogg_summon(a.key, a.repo)
+        elif a.verb == "federate": cmd_dogg_federate(a.key or a.repo)
+        elif a.verb == "peers":
+            peers = _federation_peers()
+            print("\n".join(peers) if peers else "no federation yet — rappidex dogg federate owner/name")
+        elif a.verb == "sync": cmd_dogg_sync()
         else:
             rec = find_record(a.key)
             if not rec: sys.exit(f"no rappid matching '{a.key}'")
