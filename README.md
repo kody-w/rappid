@@ -1,4 +1,30 @@
-# RAPP Zoo v2
+# 🦖 RAPPid Zoo
+
+> **Every AI is a creature. Every creature has a call.**
+
+Like every Pokémon species has a cry you recognize with your eyes closed, every
+AI on your machine gets one: a unique synthesized **species call** that plays
+when it's invoked and when it finishes — so during eyes-off work you know *who*
+just spoke. The first invocation **hatches a rappid**: a sovereign `rapp/1`
+creature with a genome, a rarity, a hologram, and a portable egg.
+
+- **[📖 RAPPidex](https://kody-w.github.io/rapp-zoo-v2/rappidex.html)** — the living Pokédex: known species start shadowed; encounters reveal them; wild eggs grow the dex forever.
+- **[✨ Holodex](https://kody-w.github.io/rapp-zoo-v2/holodex.html)** — every rappid as a particle-swarm hologram (Duneheart fauna engine), cries included.
+- **[SPEC.md](SPEC.md)** — the `rappidex/1` protocol: identity, genomes, eggs, cries, skins, lifecycle. Implementable anywhere; conformance = [`vectors/rappidex_vectors.json`](vectors/rappidex_vectors.json).
+- **[rapp_skill.md](rapp_skill.md)** / **[SKILL.md](SKILL.md)** / **[agent.py](agent.py)** — three on-ramps: RAPP-native skill, raw any-platform skill, single-file brainstem cartridge.
+- **`species/rappidex.py`** — the engine (Python 3 stdlib): `hatch · roar · list · export · import · convert · fuse · holodex`.
+- **`skins/rappid_skin.py`** — rapp(wrap) any third-party AI into a zoo citizen: hatches its rappid, roars on invoke/done, serves the exact RAPP/1 `POST /chat` seam below.
+- **Party & PC** — in the Electron estate, carry up to six rappids in the active party; the rest rest in the PC (`Party` tab; `src/party.mjs`).
+
+```bash
+python3 species/rappidex.py hatch claude     # 🥚→🐣
+python3 species/rappidex.py fuse claude copilot   # 🧬 breed a brand-new creature
+python3 skins/rappid_skin.py --species copilot --port 7182   # wrap a 3rd-party AI
+```
+
+---
+
+# RAPP Zoo v2 (the estate)
 
 RAPP Zoo v2 is a provider-neutral Electron estate for local RAPP
 neighborhoods. One visible Dock/taskbar creature owns one private data-defined

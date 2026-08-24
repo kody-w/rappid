@@ -4,6 +4,10 @@ const invoke = (channel) => (...args) => ipcRenderer.invoke(channel, ...args);
 
 contextBridge.exposeInMainWorld("zoo", Object.freeze({
   getState: invoke("zoo:state"),
+  partyState: invoke("zoo:party-state"),
+  partyAdd: invoke("zoo:party-add"),
+  partyPC: invoke("zoo:party-pc"),
+  partyCry: invoke("zoo:party-cry"),
   attach: invoke("zoo:attach"),
   detach: invoke("zoo:detach"),
   health: invoke("zoo:health"),

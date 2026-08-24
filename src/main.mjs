@@ -1,3 +1,4 @@
+import { addToParty, cryFor, partyState, sendToPC } from "./party.mjs";
 import {
   app,
   BrowserWindow,
@@ -320,6 +321,33 @@ register("zoo:attach", async ({ rappid, name, baseUrl }) => {
   });
   return { attached: result.attached, rappid: result.resident.rappid };
 });
+
+register("zoo:party-state", async () => partyState());
+
+register("zoo:party-add", async (rappid) => {
+  const result = addToParty(rappid);
+  cryFor(rappid);
+  ledger.append({
+    action: "party.add",
+    status: "completed",
+    summary: "A rappid joined the active party.",
+    evidence: [rappid],
+  });
+  return result;
+});
+
+register("zoo:party-pc", async (rappid) => {
+  const result = sendToPC(rappid);
+  ledger.append({
+    action: "party.pc",
+    status: "completed",
+    summary: "A rappid was sent to the PC.",
+    evidence: [rappid],
+  });
+  return result;
+});
+
+register("zoo:party-cry", async (rappid) => ({ played: cryFor(rappid) }));
 
 register("zoo:detach", async (rappid) => {
   const result = store.detach(rappid);

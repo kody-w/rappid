@@ -452,8 +452,64 @@ function render() {
   autopilot?.markChanged();
 }
 
+
+// ── Party view: the active rappid party and the PC ──────────────────────────
+async function renderParty() {
+  const partyList = document.getElementById("party-list");
+  const pcList = document.getElementById("pc-list");
+  if (!partyList || !pcList) return;
+  let partyView;
+  try {
+    partyView = await window.zoo.partyState();
+  } catch (error) {
+    partyList.replaceChildren(element("p", { className: "empty", text: String(error?.message || error) }));
+    return;
+  }
+  document.getElementById("party-count").textContent = `${partyView.active.length}/${partyView.max}`;
+  const row = (rec, inParty) => {
+    const card = element("article", { className: "card" });
+    card.appendChild(element("h3", { text: rec.display_name || rec.name || rec.species }));
+    card.appendChild(element("p", { className: "mono", text: `${rec.species} · ${rec.rarity || "?"} · ${rec.genome_id || ""}` }));
+    card.appendChild(element("p", { className: "mono", text: rec.rappid }));
+    const actions = element("div", { className: "actions" });
+    const cry = element("button", { text: "▶ cry", type: "button" });
+    cry.addEventListener("click", () => { window.zoo.partyCry(rec.rappid); });
+    actions.appendChild(cry);
+    const move = element("button", {
+      text: inParty ? "send to PC" : "add to party",
+      type: "button",
+      className: inParty ? "" : "primary",
+    });
+    move.addEventListener("click", async () => {
+      try {
+        if (inParty) await window.zoo.partyPC(rec.rappid);
+        else await window.zoo.partyAdd(rec.rappid);
+      } catch (error) {
+        window.alert(String(error?.message || error));
+      }
+      renderParty();
+    });
+    actions.appendChild(move);
+    card.appendChild(actions);
+    return card;
+  };
+  partyList.replaceChildren(
+    ...(partyView.active.length
+      ? partyView.active.map((rec) => row(rec, true))
+      : [element("p", { className: "empty", text: "No rappids in the party. Add one from the PC." })]),
+  );
+  pcList.replaceChildren(
+    ...(partyView.pc.length
+      ? partyView.pc.map((rec) => row(rec, false))
+      : [element("p", { className: "empty", text: "The PC is empty — hatch rappids with the species engine (see SPEC.md)." })]),
+  );
+}
+
 for (const button of document.querySelectorAll("[data-tab]")) {
-  button.addEventListener("click", () => activateTab(button.dataset.tab));
+  button.addEventListener("click", () => {
+    activateTab(button.dataset.tab);
+    if (button.dataset.tab === "party") renderParty();
+  });
 }
 
 $("#attach-form").addEventListener("submit", async (event) => {

@@ -22,6 +22,7 @@
       </div>
       <nav aria-label="Zoo sections">
         <button class="nav-item active" data-tab="neighborhoods" data-zoo-control="nav.neighborhoods">Neighborhoods</button>
+        <button class="nav-item" data-tab="party" data-zoo-control="nav.party">Party</button>
         <button class="nav-item" data-tab="global" data-zoo-control="nav.global">Global object</button>
         <button class="nav-item" data-tab="drill" data-zoo-control="nav.drill">Local Drill</button>
         <button class="nav-item" data-tab="library" data-zoo-control="nav.library">Approved library</button>
@@ -87,6 +88,30 @@
               <textarea id="chat-input" data-zoo-control="chat.input" rows="3" placeholder="Send one exact RAPP/1 turn" disabled></textarea>
               <button type="submit" class="primary" data-zoo-control="chat.send" disabled>Send</button>
             </form>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" data-panel="party" hidden>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">YOUR ACTIVE RAPPIDS</p>
+            <h2>Party</h2>
+          </div>
+          <p>Carry up to six rappids in the active party. Everyone else waits in the PC — still yours, still hatched, one click from the front line. Records live in <span class="mono">~/.rapp/rappids/</span>.</p>
+        </div>
+        <div class="two-column">
+          <div>
+            <div class="card">
+              <h3>Active party <span id="party-count" class="mono"></span></h3>
+              <div id="party-list" class="card-list" aria-label="Active party"></div>
+            </div>
+          </div>
+          <div>
+            <div class="card">
+              <h3>PC — owned, resting</h3>
+              <div id="pc-list" class="card-list" aria-label="PC box"></div>
+            </div>
           </div>
         </div>
       </section>

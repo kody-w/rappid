@@ -1,0 +1,79 @@
+{
+  "prng": [
+    {
+      "seed": "rappid:claude:kody-mbp:0",
+      "first6": [
+        0.22757202526554465,
+        0.3554369667544961,
+        0.1060752363409847,
+        0.9487212661188096,
+        0.5838745057117194,
+        0.4374569475185126
+      ]
+    },
+    {
+      "seed": "duneheart-test",
+      "first3": [
+        0.5810142857953906,
+        0.09857085160911083,
+        0.8211843268945813
+      ]
+    }
+  ],
+  "genome": {
+    "species": "claude",
+    "seed": "parity-test-1",
+    "genome": {
+      "layers": [
+        {
+          "role": "form",
+          "k": 40,
+          "shape": "blob",
+          "limbs": 4,
+          "segments": 3,
+          "symmetry": "radial",
+          "body_r": 0.516,
+          "limb_len": 0.446,
+          "cohesion": 0.856
+        },
+        {
+          "role": "surface",
+          "k": 60,
+          "palette": [
+            "#f5e6d0",
+            "#e0b48a",
+            "#9a6a4a",
+            "#ffb87a"
+          ],
+          "pattern": "glow",
+          "glow": 0.679,
+          "opacity": 0.966,
+          "grain": 1,
+          "sparkle": 0.335
+        },
+        {
+          "role": "motion",
+          "k": 50,
+          "breathe": 0.839,
+          "drift": 0.539,
+          "pulse": 0.449,
+          "reach": 0.764,
+          "dissolve": 0.415
+        }
+      ],
+      "compose": {
+        "windows": [
+          [
+            0,
+            1,
+            2
+          ]
+        ],
+        "loop": true
+      },
+      "species": "claude"
+    },
+    "genome_id": "23d110a4def3",
+    "egg": "eyJnZW5vbWUiOnsibGF5ZXJzIjpbeyJyb2xlIjoiZm9ybSIsImsiOjQwLCJzaGFwZSI6ImJsb2IiLCJsaW1icyI6NCwic2VnbWVudHMiOjMsInN5bW1ldHJ5IjoicmFkaWFsIiwiYm9keV9yIjowLjUxNiwibGltYl9sZW4iOjAuNDQ2LCJjb2hlc2lvbiI6MC44NTZ9LHsicm9sZSI6InN1cmZhY2UiLCJrIjo2MCwicGFsZXR0ZSI6WyIjZjVlNmQwIiwiI2UwYjQ4YSIsIiM5YTZhNGEiLCIjZmZiODdhIl0sInBhdHRlcm4iOiJnbG93IiwiZ2xvdyI6MC42NzksIm9wYWNpdHkiOjAuOTY2LCJncmFpbiI6MSwic3BhcmtsZSI6MC4zMzV9LHsicm9sZSI6Im1vdGlvbiIsImsiOjUwLCJicmVhdGhlIjowLjgzOSwiZHJpZnQiOjAuNTM5LCJwdWxzZSI6MC40NDksInJlYWNoIjowLjc2NCwiZGlzc29sdmUiOjAuNDE1fV0sImNvbXBvc2UiOnsid2luZG93cyI6W1swLDEsMl1dLCJsb29wIjp0cnVlfSwic3BlY2llcyI6ImNsYXVkZSJ9LCJpZCI6IjIzZDExMGE0ZGVmMyIsImJvcm4iOnsiY29vcmQiOiJkemh5ODgiLCJ0IjowfSwidGl0bGUiOiJDbGF1ZGUgQ29kZSIsInJhcml0eSI6InJhcmUiLCJzb3VyY2UiOiJyYXBwaWRleCJ9"
+  }
+}
