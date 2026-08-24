@@ -1335,8 +1335,8 @@ def front_door(rec, frames):
     form = molting.fold(frames)
     birth = rec.get("birth") or {}
     public_birth = {k: birth.get(k) for k in
-                    ("rite", "challenge_id", "cypher", "decode", "motif", "seal",
-                     "attested_at", "blessed")}
+                    ("rite", "challenge_id", "cypher", "decode", "decode_ok", "motif",
+                     "seal", "attested_at", "blessed")}
     if birth.get("midwife"):
         public_birth["midwife"] = {"name": birth["midwife"].get("name"),
                                    "shape": birth["midwife"].get("shape")}
@@ -1347,7 +1347,10 @@ def front_door(rec, frames):
                                       "turns": birth["transcript"].get("turns")}
     public_frames = []
     for f in molting.order(frames):
-        pf = {k: f[k] for k in ("schema", "kind", "mutation", "role", "at", "host", "motif", "id")
+        # no "host": device hostnames are internal identifiers and never enter
+        # a public document. The frame keeps its original content-hash id, so
+        # the reunion molt still recognizes it as the same frame (§15).
+        pf = {k: f[k] for k in ("schema", "kind", "mutation", "role", "at", "motif", "id")
               if k in f}
         if f.get("anchor"):
             pf["anchor"] = {k: f["anchor"].get(k) for k in ("kind", "title", "sha256")}
@@ -1364,8 +1367,10 @@ def front_door(rec, frames):
         "egg": rec.get("egg"),
         "birth": {k: v for k, v in public_birth.items() if v is not None},
         "frames": public_frames,
-        "life": {k: form.get(k) for k in ("standing", "traits", "dimensions", "molt_id",
-                                          "frames", "mutations", "anchor")},
+        "life": dict({k: form.get(k) for k in ("standing", "traits", "molt_id",
+                                               "frames", "mutations", "anchor")},
+                     # how many dimensions it lived in, never which machines
+                     dimensions=len(form.get("dimensions") or [])),
         "published_at": now_iso(),
         "published_by": owner(),
     }
@@ -1392,7 +1397,13 @@ def cmd_dogg_publish(key, repo=None, push=True):
         print(f"    {local_path}")
         print("    (set --repo owner/name or RAPPID_DOGG_REPO to publish it publicly)")
         return door
-    checkout = os.path.join(DEX_HOME, "dogg-checkout")
+    if not re.fullmatch(r"[\w.-]+/[\w.-]+", repo):
+        sys.exit("a DOGG repo is owner/name of a public GitHub repo")
+    # one checkout PER repo: an owner following the rappidverse-* convention
+    # publishes to several DOGG repos, and a shared checkout would silently
+    # write every door into whichever repo was cloned first
+    checkout = os.path.join(DEX_HOME, "dogg-checkouts", repo.replace("/", "__"))
+    os.makedirs(os.path.dirname(checkout), exist_ok=True)
     try:
         if os.path.isdir(os.path.join(checkout, ".git")):
             subprocess.run(["git", "-C", checkout, "pull", "-q", "--rebase"], check=True)
@@ -1561,6 +1572,88 @@ def _federation_peers():
         return list(FEDERATION_SEED)
     return [p for p in peers if re.fullmatch(r"[\w.-]+/[\w.-]+", p)]
 
+# The owner convention (SPEC §11): a public, non-fork, non-archived repo named
+# rappidverse-* under a followed account IS a DOGG repo — creating the repo is
+# joining the network. The listing API is discovery-only and optional: it never
+# carries federation data (index, doors and peers still ride
+# raw.githubusercontent), and every follow-resolved summon stays behind the
+# index byte pin. A follow is client-local; it never enters a published
+# peers.json.
+FOLLOW_CONVENTION = re.compile(r"rappidverse-[\w.-]*\Z")
+GITHUB_OWNER = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})\Z")
+
+def _federation_follows():
+    try:
+        with open(FEDERATION_FILE) as f:
+            follows = json.load(f).get("follows", [])
+    except OSError:
+        return []
+    return [o for o in follows if GITHUB_OWNER.fullmatch(str(o))]
+
+def _follow_repos(owner):
+    """Derive a followed account's DOGG repos from its public repo listing —
+    the ones it has now and every one it creates later. Hostile or absent
+    listings derive nothing: discovery is a convenience, never an authority."""
+    if not GITHUB_OWNER.fullmatch(owner or ""):
+        return []
+    repos = []
+    # the listing paginates at 100; a prolific owner's convention repos must
+    # not silently fall off page one (bounded: 4 pages, stop on a short page)
+    for page in range(1, 5):
+        try:
+            listing = _fetch_json("https://api.github.com/users/"
+                                  f"{owner}/repos?per_page=100&page={page}")
+        except Exception:
+            break   # offline or rate-limited: the explicit peer list still works
+        if not isinstance(listing, list) or not listing:
+            break
+        for entry in listing:
+            entry = entry if isinstance(entry, dict) else {}
+            name = str(entry.get("name") or "")
+            if not FOLLOW_CONVENTION.fullmatch(name):
+                continue
+            if entry.get("fork") or entry.get("archived") or entry.get("private"):
+                continue
+            repos.append(f"{owner}/{name}")
+        if len(listing) < 100:
+            break
+    return repos
+
+def _write_federation(peers, follows):
+    os.makedirs(DEX_HOME, exist_ok=True)
+    with open(FEDERATION_FILE, "w") as f:
+        json.dump({"schema": "rappid-federation/1",
+                   "peers": peers, "follows": follows}, f, indent=2)
+
+def cmd_dogg_follow(owner):
+    """Follow a GitHub account: every rappidverse-* repo it has now — and every
+    one it creates later — walks as a federation root on each sync."""
+    owner = (owner or "").strip().lstrip("@").lower()
+    if not GITHUB_OWNER.fullmatch(owner):
+        sys.exit("an owner is a GitHub account name (rappidex dogg follow kody-w)")
+    follows = _federation_follows()
+    if owner in follows:
+        print(f"already following @{owner}")
+        return follows
+    follows.append(owner)
+    _write_federation(_federation_peers(), follows)
+    repos = _follow_repos(owner)
+    if repos:
+        print(f"🐾  following @{owner} — {len(repos)} rappidverse-* repo(s) answer:")
+        for r in repos:
+            print(f"    {r}")
+    else:
+        print(f"🐾  following @{owner} — no rappidverse-* repos yet; "
+              f"they join the next sync the moment they exist")
+    return follows
+
+def cmd_dogg_unfollow(owner):
+    owner = (owner or "").strip().lstrip("@").lower()
+    follows = [o for o in _federation_follows() if o != owner]
+    _write_federation(_federation_peers(), follows)
+    print(f"…  no longer following @{owner}")
+    return follows
+
 def _raw_url(repo, path):
     return f"https://raw.githubusercontent.com/{repo}/main/rappidverse/{path}"
 
@@ -1584,9 +1677,7 @@ def cmd_dogg_federate(repo):
     except Exception as e:
         print(f"⚠️  {repo} has no reachable rappidverse yet ({e}) — federating anyway")
     peers.append(repo)
-    os.makedirs(DEX_HOME, exist_ok=True)
-    with open(FEDERATION_FILE, "w") as f:
-        json.dump({"schema": "rappid-federation/1", "peers": peers}, f, indent=2)
+    _write_federation(peers, _federation_follows())
     print(f"    federation: {', '.join(peers)}")
     return peers
 
@@ -1597,6 +1688,15 @@ def cmd_dogg_sync(quiet=False):
     repo_env = os.environ.get("RAPPID_DOGG_REPO")
     if repo_env and repo_env not in queue:
         queue.insert(0, repo_env)
+    # followed accounts: derive their rappidverse-* repos NOW, so a repo the
+    # owner created since the last sync walks as a root with no re-federate
+    for owner_name in _federation_follows():
+        derived = _follow_repos(owner_name)
+        if not quiet and derived:
+            print(f"    @{owner_name}: {len(derived)} repo(s) via the owner convention")
+        for repo in derived:
+            if repo not in queue:
+                queue.append(repo)
     cache = {"schema": "rappid-rappidverse-cache/1", "synced_at": now_iso(),
              "repos": [], "doors": {}}
     depth_left = {r: FEDERATION_DEPTH for r in queue}
@@ -1812,7 +1912,8 @@ def main():
     p.add_argument("--anchor", help="a file, link or note this mutation came from")
     p.add_argument("--anchor-title")
     p = sub.add_parser("dogg")
-    p.add_argument("verb", choices=["publish", "summon", "chant", "federate", "peers", "sync"])
+    p.add_argument("verb", choices=["publish", "summon", "chant", "federate",
+                                    "follow", "unfollow", "peers", "sync"])
     p.add_argument("key", nargs="?"); p.add_argument("--repo"); p.add_argument("--no-push", action="store_true")
     sub.add_parser("frames").add_argument("key")
     p = sub.add_parser("molt"); p.add_argument("key"); p.add_argument("other", nargs="?")
@@ -1847,9 +1948,13 @@ def main():
         if a.verb == "publish": cmd_dogg_publish(a.key, a.repo, push=not a.no_push)
         elif a.verb == "summon": cmd_dogg_summon(a.key, a.repo)
         elif a.verb == "federate": cmd_dogg_federate(a.key or a.repo)
+        elif a.verb == "follow": cmd_dogg_follow(a.key)
+        elif a.verb == "unfollow": cmd_dogg_unfollow(a.key)
         elif a.verb == "peers":
             peers = _federation_peers()
             print("\n".join(peers) if peers else "no federation yet — rappidex dogg federate owner/name")
+            for owner_name in _federation_follows():
+                print(f"@{owner_name} (follows every rappidverse-* repo, present and future)")
         elif a.verb == "sync": cmd_dogg_sync()
         else:
             rec = find_record(a.key)

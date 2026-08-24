@@ -210,6 +210,20 @@ answering a chant wins and later repos never override. `publish` writes the
 publishing device's peer list into the repo's `peers.json` (union), so the
 federation spreads through every published repo, from any client.
 
+**The owner convention (follow an account).** A public, non-fork, non-archived
+repository named `rappidverse-*` under a GitHub account is a DOGG repo by
+convention — creating the repo is joining the network. A client MAY **follow**
+an account: `federation.json` gains `follows: ["owner", …]`, and every sync
+derives that account's matching repos from the public unauthenticated listing
+API and walks them as federation roots — the repos it has now and every one it
+creates later, with no re-federate. The listing API is discovery-only and
+optional: it never carries federation data (index, doors, and peers still ride
+`raw.githubusercontent.com`), a client without it loses only the convenience,
+and a hostile or unreachable listing derives nothing. A follow is client-local
+configuration — it never enters a published `peers.json` — and every
+follow-resolved summon stays behind the index byte pin, failing closed on
+mismatch like any other.
+
 **Summon = instant self-assembly.** Saying the chant fetches the door, unpacks
 its egg, reassembles the creature under its ORIGINAL rappid (a summoned
 creature keeps its identity — never re-minted), and merges the door's public

@@ -389,4 +389,55 @@ ok("a synced chant resolves to its repo's raw door plus its byte pin",
        "f" * 64))
 ok("an unknown chant resolves to nothing", rx._resolve_chant("no-such-chant") is None)
 
+# the owner convention (no network: the listing is monkeypatched, like the cache)
+_real_fetch_json = rx._fetch_json
+def _fake_listing(url, timeout=20):
+    assert url.startswith("https://api.github.com/users/keeper/repos?per_page=100&page="), url
+    if not url.endswith("page=1"):
+        return []          # pagination stops on an empty page
+    return [
+        {"name": "rappidverse-field"},
+        {"name": "rappidverse-annex", "fork": True},        # forks are not doors
+        {"name": "rappidverse-attic", "archived": True},    # nor archives
+        {"name": "rappidverse-crypt", "private": True},     # private never federates
+        {"name": "rappid"},                                 # not the convention
+        {"name": "rappidverse-bad/../evil"},                # hostile listing entry
+        None, {}, {"name": None},
+    ]
+rx._fetch_json = _fake_listing
+ok("the owner convention admits only live public rappidverse-* repos",
+   rx._follow_repos("keeper") == ["keeper/rappidverse-field"])
+follows = rx.cmd_dogg_follow("@Keeper")
+ok("a follow is normalized and persisted", rx._federation_follows() == ["keeper"])
+ok("following preserves the explicit peer list",
+   rx._federation_peers() == ["kody-w/rappterverse"])
+ok("a follow is idempotent", rx.cmd_dogg_follow("keeper") == ["keeper"])
+
+def _fake_verse(url, timeout=20):
+    if url.startswith("https://api.github.com/users/keeper/repos?per_page=100&page="):
+        return [{"name": "rappidverse-field"}] if url.endswith("page=1") else []
+    if url == rx._raw_url("keeper/rappidverse-field", "index.json"):
+        return {"schema": "rappid-rappidverse/1",
+                "doors": {"one-two-three-four-five-six-seven":
+                          {"chant": "one-two-three-four-five-six-seven",
+                           "door_sha256": "a" * 64}}}
+    if url.endswith("peers.json"):
+        return {"peers": []}
+    raise OSError(f"unexpected fetch: {url}")
+rx._fetch_json = _fake_verse
+synced = rx.cmd_dogg_sync(quiet=True)
+ok("sync walks a followed owner's repos as federation roots",
+   "keeper/rappidverse-field" in synced["repos"]
+   and "one-two-three-four-five-six-seven" in synced["doors"])
+def _down(url, timeout=20):
+    raise OSError("listing unreachable")
+rx._fetch_json = _down
+ok("a hostile owner name derives nothing", rx._follow_repos("../evil") == [])
+ok("an unreachable listing derives nothing (never an authority)",
+   rx._follow_repos("keeper") == [])
+rx._fetch_json = _real_fetch_json
+rx.cmd_dogg_unfollow("keeper")
+ok("an unfollow is persisted and peers survive it",
+   rx._federation_follows() == [] and rx._federation_peers() == ["kody-w/rappterverse"])
+
 print(f"\nSPECIES TESTS: {PASS}/{PASS} PASS")

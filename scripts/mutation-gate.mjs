@@ -103,6 +103,26 @@ const mutants = [
     to: "? leader.replicas.length >= Math.ceil(plan.replicas * 0.94)",
     test: "tests/simulation-neighborhood.test.mjs",
   },
+  // The species layer's DOGG owner convention (SPEC §11) is a trust boundary:
+  // an account's public repo LISTING (network data) decides which repos walk
+  // as federation roots. These mutants relax its two filters; the species
+  // suite must catch both, or a hostile listing steers the federation.
+  {
+    name: "follow-admits-forks-archives-private",
+    file: "species/rappidex.py",
+    from: 'if entry.get("fork") or entry.get("archived") or entry.get("private"):\n                continue',
+    to: "if False:\n                continue",
+    runner: "python",
+    test: "tests/test_species.py",
+  },
+  {
+    name: "follow-unvalidated-repo-name",
+    file: "species/rappidex.py",
+    from: "if not FOLLOW_CONVENTION.fullmatch(name):\n                continue",
+    to: "if not name:\n                continue",
+    runner: "python",
+    test: "tests/test_species.py",
+  },
 ];
 
 const results = [];
@@ -115,6 +135,14 @@ for (const mutant of mutants) {
     cpSync(path.join(root, "tests"), path.join(temporary, "tests"), {
       recursive: true,
     });
+    if (mutant.runner === "python") {
+      // the species suite imports ../species and reads ../skins and ../vectors
+      for (const dir of ["species", "skins", "vectors"]) {
+        cpSync(path.join(root, dir), path.join(temporary, dir), {
+          recursive: true,
+        });
+      }
+    }
     writeFileSync(
       path.join(temporary, "package.json"),
       '{"type":"module","private":true}\n',
@@ -126,12 +154,12 @@ for (const mutant of mutants) {
     }
     writeFileSync(file, source.replace(mutant.from, mutant.to));
     const result = spawnSync(
-      process.execPath,
-      ["--test", mutant.test],
+      mutant.runner === "python" ? "python3" : process.execPath,
+      mutant.runner === "python" ? [mutant.test] : ["--test", mutant.test],
       {
         cwd: temporary,
         encoding: "utf8",
-        timeout: 60_000,
+        timeout: mutant.runner === "python" ? 120_000 : 60_000,
       },
     );
     const caught = result.status !== 0;
