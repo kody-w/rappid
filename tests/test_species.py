@@ -159,4 +159,31 @@ with open(sp_path, "w") as f:
 rx.cmd_party_import(sp_path)   # must not raise
 ok("egg-less record reassimilates", any(r.get("genome_id") == "c0ffee123456" for r in rx.all_records()))
 
+# ── 9. bless: a pre-rite creature can be attested after the fact ──
+pre = mint_pre_rite = rx.mint_record("hermes", rx.generate_genome("hermes", "pre-rite-1"))
+pre["dir"] = "hermes-prerite"
+rx.save_record(pre)
+ok("pre-rite record has no birth", "birth" not in pre)
+blessed = rx.cmd_bless(pre["genome_id"], midwife="stub", attempts=1)
+ok("bless seals it", blessed is not None and rite.verify_seal(blessed["birth"]))
+ok("bless says it was blessed", blessed["birth"].get("blessed") is True)
+ok("bless keeps the identity", blessed["rappid"] == pre["rappid"])
+ok("bless records lineage", any("blessed-by:" in x for x in blessed["lineage"]))
+ok("bless is idempotent", rx.cmd_bless(pre["genome_id"], midwife="stub")["birth"]["seal"]
+   == blessed["birth"]["seal"])
+
+# ── 10. discovery emits a usable agent + skill ──
+disc = rx.cmd_discover("Test Species", f"{sys.executable} {STUB} {{prompt}}",
+                       shape="test-stub", model="deterministic", genus="Probata")
+ok("discovery records the species", disc is not None and disc["genus"] == "Probata")
+emitted = rx.cmd_emit("testspecies")
+ok("emitted agent compiles", os.path.exists(emitted["agent"]))
+src_text = open(emitted["agent"]).read()
+compile(src_text, emitted["agent"], "exec")
+ok("emitted agent carries the real shape", "test-stub" in src_text)
+ok("emitted skill carries the seal", disc["seal"][:16] in open(emitted["skill"]).read())
+ok("emitted agent names a tool class", "class TestspeciesHatcher" in src_text)
+ok("discovered species is hatchable", rx.cmd_hatch("testspecies", quiet=True,
+   midwife="testspecies", attempts=1)[0] is not None)
+
 print(f"\nSPECIES TESTS: {PASS}/{PASS} PASS")

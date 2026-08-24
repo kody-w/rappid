@@ -103,6 +103,8 @@ into any zoo as species `wild`.
 | `hatch <species> [--midwife a] [--attempts n]` | mint genome (seed = `rappid:<species>:<host>:<nonce>`) + rapp/1 identity, then **run the rite (§12)** — an LLM must seal the birth or nothing is written. On success: persist record + egg + birth song `.mid` + burned-in transcript, play fanfare + cry. Idempotent per (species, host). |
 | `discover <name> --command '…'` | meet a species the dex has never seen (§13): put the rite to an unknown AI, record its shape, add it to the registry |
 | `verify <species\|id>` | re-check a birth seal and its burned-in transcript from the record alone |
+| `bless <species\|id>` | attest a creature that predates the rite: identity unchanged, seal marked `blessed` |
+| `emit <slug>` | lock a discovered species' shape in as a working `agent.py` + `rapp_skill.md` |
 | `roar <species> [--done]` | play the individual's cry; auto-hatch on first call |
 | `export` | write the egg — the backup/interchange document |
 | `import` | adopt any egg; unknown species → `wild`; dedupe on `genome_id` |
@@ -217,6 +219,24 @@ and then you hatch **your own** of that newly-encountered species. At its
 simplest an adapter is nothing but a way to hand the thing a `SKILL.md` and
 read its reply — which is why any AI that can read a skill file can be met,
 recorded, and kept.
+
+**The shape comes back out.** Discovery immediately emits, from what the AI
+*actually did* rather than from a guess about it:
+
+- `agents/<slug>_hatcher_agent.py` — a single-file RAPP agent carrying that
+  species' locked-in shape (drop it in a brainstem; the model gets a
+  `<Slug>Hatcher` tool that can also midwife other births), and
+- `<slug>.rapp_skill.md` — the species' skill card: shape, register, first
+  motif, seal, and the exact invocation.
+
+Both land in `$RAPPIDEX_HOME/emit/<slug>/`; `emit` regenerates them on demand.
+A dex entry carries its own `adapter`, so a discovered species stays hatchable
+from the dex alone.
+
+**Creatures that predate the rite** are not orphaned: `bless <key>` runs the
+rite over an existing record. The identity and genome never change; the seal
+carries `blessed: true` and the lineage records who attested it — an honest
+record of a birth witnessed late rather than a pretended one.
 
 ## 14. Compliance checklist
 

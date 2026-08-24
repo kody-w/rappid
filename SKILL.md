@@ -70,6 +70,12 @@ its register and first motif seed its look and voice, and it joins this device's
 registry so you can hatch your own of it. At its simplest, an adapter is nothing
 more than a way to hand something this file and read what comes back.
 
+Discovery hands the shape straight back to you: a ready `agent.py` for that
+species (with a `<Slug>Hatcher` tool) and its own `rapp_skill.md`, written from
+what the AI actually did — so the next agent gets full fidelity without
+rediscovering anything. Creatures older than the rite can be attested later
+with `bless`, which keeps their identity and marks the seal as blessed.
+
 ## Boundaries
 
 - Never put secrets, tokens, or personal data into records or eggs — they are

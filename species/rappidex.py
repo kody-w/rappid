@@ -426,7 +426,7 @@ def cmd_hatch(species, quiet=False, midwife=None, attempts=3):
     genome = generate_genome(species, seed)
     rec = mint_record(species, genome)
     log = (lambda *a: None) if quiet else print
-    hatchers = rite.load_hatchers(_HERE, DEX_HOME)
+    hatchers = {**discovered_adapters(), **rite.load_hatchers(_HERE, DEX_HOME)}
     birth, exhaust = rite.attend_birth(rec["rappid"], species, hatchers,
                                        midwife=midwife, attempts=attempts, log=log)
     rite.append_ledger(DEX_HOME, exhaust)
@@ -785,6 +785,9 @@ def cmd_discover(name, command, shape="cli", model=None, genus=None):
     found[slug] = {
         "name": name, "genus": genus or "Inventa", "discovered_at": now_iso(),
         "host": hostslug(), "shape": shape, "register": [lo, hi],
+        # the shape is kept WITH the species, not only in the adapter registry:
+        # a dex entry that cannot say how to reach its species is half a record
+        "adapter": dict(hatchers[slug]),
         "motif": birth["motif"], "seal": birth["seal"],
         "blurb": f"Encountered on {hostslug()}; answered the rite in "
                  f"{birth['attempts']} attempt(s) through a {shape} shape.",
@@ -803,7 +806,22 @@ def cmd_discover(name, command, shape="cli", model=None, genus=None):
     print(f"📖  NEW SPECIES RECORDED — {name} ({found[slug]['genus']}), "
           f"register {lo}-{hi}, shape '{shape}'")
     print(f"    now hatch your own:  rappidex hatch {slug}")
+    try:
+        cmd_emit(slug)
+    except SystemExit:
+        pass
     return found[slug]
+
+
+def discovered_adapters():
+    """Adapters carried by dex entries themselves — so a discovered species is
+    always hatchable from the dex alone, with or without a separate registry."""
+    try:
+        with open(os.path.join(DEX_HOME, "discovered-species.json")) as f:
+            found = json.load(f)
+    except OSError:
+        return {}
+    return {slug: d["adapter"] for slug, d in found.items() if d.get("adapter")}
 
 
 def _load_discovered():
@@ -821,6 +839,212 @@ def _load_discovered():
             shapes=[("blob", 0.4), ("star", 0.35), ("ring", 0.25)], symmetry_radial=0.5,
             patterns=[("glow", 0.4), ("spot", 0.35), ("stripe", 0.25)],
             limbs=(1, 6), glow=(0.45, 0.45)))
+
+
+
+# ─────────────────────────────────────────────── emit: lock in a species' shape
+AGENT_TEMPLATE = '''"""
+{slug}_hatcher_agent.py — RAPP agent for the {name} species.
+
+Emitted by the RAPPid Zoo when {name} was discovered on {host} ({discovered_at}).
+The shape below is not guessed: it is the shape {name} actually answered in
+during its rite (SPEC §12-13) — {shape}, register {lo}-{hi}, first motif
+{motif}.
+
+Drop into ~/.brainstem/agents/. The model gets a tool called {tool} that puts
+work to {name} through that exact shape, and can attest births with it.
+"""
+from __future__ import annotations
+
+import json
+import os
+import shlex
+import subprocess
+
+try:
+    from agents.basic_agent import BasicAgent
+except ImportError:
+    from basic_agent import BasicAgent
+
+__manifest__ = {{
+    "schema": "rapp-agent/1.0",
+    "name": "@{owner}/{slug}-hatcher",
+    "version": "1.0.0",
+    "display_name": "{name} Hatcher",
+    "description": (
+        "Speaks to {name} in the shape it answered in during its rite, and can "
+        "attest RAPPid births as its midwife."
+    ),
+    "author": "RAPPid Zoo",
+    "tags": ["rappid", "hatcher", "midwife", "{slug}"],
+    "category": "platform",
+    "requires_env": [],
+    "dependencies": ["@rapp/basic_agent"],
+    "external_prereqs": {prereqs},
+    "example_call": "Ask {name} to summarize this, or attest a birth as midwife.",
+}}
+
+# The species' locked-in shape.
+SPECIES_SHAPE = {shape_json}
+
+
+class {tool}(BasicAgent):
+    def __init__(self):
+        self.name = "{tool}"
+        self.metadata = {{
+            "name": self.name,
+            "description": __manifest__["description"],
+            "parameters": {{
+                "type": "object",
+                "properties": {{
+                    "prompt": {{"type": "string", "description": "what to put to {name}"}},
+                    "timeout": {{"type": "integer", "description": "seconds (default {timeout})"}},
+                }},
+                "required": ["prompt"],
+            }},
+        }}
+        super().__init__(name=self.name, metadata=self.metadata)
+
+    def perform(self, prompt="", timeout=None, **kwargs):
+        if not prompt:
+            return "Nothing to put to {name}."
+        command = (SPECIES_SHAPE["command"]
+                   .replace("{{prompt_json}}", shlex.quote(json.dumps(prompt)))
+                   .replace("{{prompt}}", shlex.quote(prompt)))
+        try:
+            proc = subprocess.run(command, shell=True, capture_output=True, text=True,
+                                  timeout=timeout or SPECIES_SHAPE.get("timeout", {timeout}))
+        except subprocess.TimeoutExpired:
+            return "{name} did not answer in time."
+        except OSError as e:
+            return f"{name} could not be reached: {{e}}"
+        out = (proc.stdout or "").strip() or (proc.stderr or "").strip()
+        return out or "({name} answered with nothing.)"
+'''
+
+SKILL_TEMPLATE = '''# rapp_skill: {slug}
+
+> Emitted by the RAPPid Zoo on {discovered_at}, from what {name} actually did —
+> not from a guess about it. Feed this to any RAPP-aware agent and it can put
+> work to {name}, and hatch {name} rappids, at full fidelity.
+
+## The species
+
+| | |
+|---|---|
+| name | **{name}** |
+| genus | *{genus}* |
+| shape | `{shape}` |
+| register | {lo}–{hi} (MIDI) |
+| first motif | {motif} |
+| discovered | {discovered_at} on {host} |
+| seal | `{seal}` |
+
+## How it is reached
+
+```bash
+{command}
+```
+
+`{{prompt}}` is the shell-quoted request; `{{prompt_json}}` is the JSON-encoded
+string — use that one whenever the prompt lands inside a JSON body.
+
+## What you can do with it
+
+```bash
+# hatch a {slug} rappid — {name} attests its own birth (SPEC §12)
+python3 species/rappidex.py hatch {slug}
+
+# use it as the midwife for ANY species' birth
+python3 species/rappidex.py hatch <other> --midwife {slug}
+
+# re-check a birth it sealed
+python3 species/rappidex.py verify {slug}
+```
+
+The agent form of this shape is `agents/{slug}_hatcher_agent.py` (emitted
+alongside this file) — drop it into a brainstem's `agents/` and the model gets
+a `{tool}` tool.
+
+## Rules
+
+- This shape was recorded from a passed rite. If {name} stops answering in it,
+  re-run `discover` rather than editing this file by hand — the dex should
+  always reflect what the AI actually does.
+- Adapters carry no secrets. If reaching {name} needs a key, it belongs in the
+  environment the command inherits, never in the command string.
+'''
+
+
+def cmd_emit(slug, out_dir=None):
+    """Lock in a discovered species' shape as a usable agent.py + rapp_skill.md."""
+    try:
+        with open(os.path.join(DEX_HOME, "discovered-species.json")) as f:
+            found = json.load(f)
+    except OSError:
+        found = {}
+    d = found.get(slug)
+    hatchers = rite.load_hatchers(_HERE, DEX_HOME)
+    entry = hatchers.get(slug) or (d or {}).get("adapter")
+    if not d or not entry:
+        sys.exit(f"'{slug}' is not a discovered species on this device — "
+                 f"run `discover` first (known: {', '.join(found) or 'none'})")
+    tool = "".join(part.capitalize() for part in re.split(r"[^A-Za-z0-9]+", slug) if part) + "Hatcher"
+    lo, hi = d.get("register", [48, 84])
+    fields = dict(
+        slug=slug, name=d.get("name", slug), genus=d.get("genus", "Inventa"),
+        host=d.get("host", hostslug()), discovered_at=d.get("discovered_at", now_iso()),
+        shape=entry.get("shape", "cli"), lo=lo, hi=hi,
+        motif=" ".join(str(n) for n in d.get("motif", [])),
+        seal=d.get("seal", ""), command=entry.get("command", ""),
+        timeout=entry.get("timeout", 240), tool=tool, owner=owner(),
+        prereqs=json.dumps([entry.get("model")] if entry.get("model") else []),
+        shape_json=json.dumps({k: v for k, v in entry.items() if k != "discovered"}, indent=4),
+    )
+    out_dir = out_dir or os.path.join(DEX_HOME, "emit", slug)
+    os.makedirs(os.path.join(out_dir, "agents"), exist_ok=True)
+    agent_path = os.path.join(out_dir, "agents", f"{slug}_hatcher_agent.py")
+    with open(agent_path, "w") as f:
+        f.write(AGENT_TEMPLATE.format(**fields))
+    skill_path = os.path.join(out_dir, f"{slug}.rapp_skill.md")
+    with open(skill_path, "w") as f:
+        f.write(SKILL_TEMPLATE.format(**fields))
+    compile(open(agent_path).read(), agent_path, "exec")   # never emit a broken agent
+    print(f"🍞  {d.get('name', slug)}'s shape is locked in:")
+    print(f"    {agent_path}")
+    print(f"    {skill_path}")
+    return {"agent": agent_path, "skill": skill_path}
+
+
+def cmd_bless(key, midwife=None, attempts=3):
+    """Give a pre-rite creature a real birth: the species attests it now.
+    The identity never changes; the seal records that it was blessed, not born."""
+    rec = find_record(key)
+    if not rec:
+        sys.exit(f"no rappid matching '{key}'")
+    if rec.get("birth"):
+        print(f"{rec['display_name']} already carries a sealed birth.")
+        return rec
+    hatchers = {**discovered_adapters(), **rite.load_hatchers(_HERE, DEX_HOME)}
+    birth, exhaust = rite.attend_birth(rec["rappid"], rec.get("species", "wild"), hatchers,
+                                       midwife=midwife, attempts=attempts)
+    exhaust["blessing"] = True
+    rite.append_ledger(DEX_HOME, exhaust)
+    if not birth:
+        print(f"✋ {rec['display_name']} stays unattested — no midwife would answer for it.")
+        return None
+    transcript = birth.pop("_transcript", [])
+    birth["blessed"] = True          # attested after the fact, and says so
+    rec["birth"] = birth
+    rec["voice"] = rite.motif_voice(birth["motif"], birth["register"])
+    rec.setdefault("lineage", []).append(f"blessed-by:{birth['midwife']['name']}")
+    d = save_record(rec)
+    rec["midi"] = rite.write_midi(os.path.join(d, f"birth-{rec['genome_id']}.mid"), birth["motif"])
+    rite.write_transcript(os.path.join(d, "birth-transcript.json"), birth, transcript, rec["rappid"])
+    save_record(rec)
+    print(f"🕯→🔏 {rec['display_name']} blessed by {birth['midwife']['name']} · "
+          f"motif {' '.join(str(n) for n in birth['motif'])}")
+    return rec
 
 
 # ─────────────────────────────────────────────── the GODD layer (private save)
@@ -978,6 +1202,8 @@ def main():
     p.add_argument("--command", required=True, help="how to call this AI ({prompt} / {prompt_json})")
     p.add_argument("--shape", default="cli"); p.add_argument("--model"); p.add_argument("--genus")
     sub.add_parser("verify").add_argument("key")
+    p = sub.add_parser("emit"); p.add_argument("slug"); p.add_argument("-o", "--out")
+    p = sub.add_parser("bless"); p.add_argument("key"); p.add_argument("--midwife"); p.add_argument("--attempts", type=int, default=3)
     p = sub.add_parser("roar"); p.add_argument("species"); p.add_argument("--done", action="store_true")
     sub.add_parser("list")
     sub.add_parser("show").add_argument("key")
@@ -994,6 +1220,8 @@ def main():
     if a.cmd == "hatch": cmd_hatch(a.species, midwife=a.midwife, attempts=a.attempts)
     elif a.cmd == "discover":
         cmd_discover(a.name, a.command, shape=a.shape, model=a.model, genus=a.genus)
+    elif a.cmd == "emit": cmd_emit(a.slug, a.out)
+    elif a.cmd == "bless": cmd_bless(a.key, midwife=a.midwife, attempts=a.attempts)
     elif a.cmd == "verify":
         rec = find_record(a.key)
         if not rec: sys.exit(f"no rappid matching '{a.key}'")
