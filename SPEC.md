@@ -105,6 +105,9 @@ into any zoo as species `wild`.
 | `verify <species\|id>` | re-check a birth seal and its burned-in transcript from the record alone |
 | `bless <species\|id>` | attest a creature that predates the rite: identity unchanged, seal marked `blessed` |
 | `emit <slug>` | lock a discovered species' shape in as a working `agent.py` + `rapp_skill.md` |
+| `mutate <key> <kind> [note]` | earn a frame from something met in the field; grows a new sound role (§15) |
+| `frames <key>` | the creature's lineage: every frame, every dimension it has lived on |
+| `molt <key> [doc]` | reunion: fold two dimensions together, losing nothing from either |
 | `roar <species> [--done]` | play the individual's cry; auto-hatch on first call |
 | `export` | write the egg — the backup/interchange document |
 | `import` | adopt any egg; unknown species → `wild`; dedupe on `genome_id` |
@@ -238,6 +241,36 @@ rite over an existing record. The identity and genome never change; the seal
 carries `blessed: true` and the lineage records who attested it — an honest
 record of a birth witnessed late rather than a pretended one.
 
+## 15. Frames, mutation, and the reunion molt
+
+A rappid is not fixed. What it **is** at any moment is a fold over its
+**frames** — its birth, then everything it has earned since. The form is never
+stored as a second truth that could disagree with the frames; it is recomputed,
+so it cannot drift.
+
+- **A frame** (`rappid-frame/1`) is identified by the sha256 of its content, so
+  merging the same frame twice still yields one frame. Frames live append-only
+  beside the creature in `frames.jsonl`.
+- **Mutation** (`mutate <key> <kind> [note]`) is how a creature grows from what
+  it meets: `success`, `alert`, `greeting`, `focus`, `recovery`. Each grants a
+  **sound role**, and its motif is derived from that creature's *own birth
+  motif* — a rappid that grows still sounds like itself, never like a stock
+  sample. A creature with no sealed birth cannot mutate (§12): there is nothing
+  to grow from.
+- **Dimensions.** The desk copy and the companion copy are two dimensions of
+  one creature. Out in the field, offline, the companion's dimension earns
+  frames the desk one never sees — that is the point, not a sync failure.
+- **The reunion molt** (`molt <key> [document]`, and automatically on
+  `party import`) unions the two frame sets, orders them deterministically
+  (birth first, then timestamp, then frame id), and folds. It is idempotent and
+  order-independent: both dimensions come out of the molt with the same
+  `molt_id`, the same voices, and neither loses what it learned alone. The fold
+  records every host the creature has lived on.
+- Frames travel inside `rappid-party-transfer/1`, so carrying a party out and
+  bringing it home is all the sync there is. `frames <key>` shows the lineage.
+
+This is how diversity accumulates: same starting species, different lives.
+
 ## 14. Compliance checklist
 
 1. PRNG + genome_id reproduce the test vectors byte-exactly.
@@ -249,5 +282,6 @@ record of a birth witnessed late rather than a pretended one.
 6. Records never contain secrets, tokens, or PII. Eggs are shareable by design.
 7. Birth seals re-verify from the record alone; birth transcripts stay out of eggs.
 8. Every rite appends one ledger line, sealed or refused.
+9. Merging frames is idempotent and order-independent; the fold is recomputed, never stored as truth (§15).
 
 *RAPPid Zoo · kody-w/rapp-zoo-v2 · MIT*

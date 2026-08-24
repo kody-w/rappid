@@ -46,6 +46,7 @@ from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import birth as rite
+import molt as molting
 
 HOME = os.path.expanduser("~")
 DEX_HOME = os.environ.get("RAPPIDEX_HOME") or os.path.join(HOME, ".rappidex")
@@ -261,6 +262,11 @@ def owner():
         return OWNER_FALLBACK
 
 def hostslug():
+    """RAPPID_HOST lets one machine stand in for another dimension (a companion,
+    a test rig) — the frames record where a creature actually lived."""
+    override = os.environ.get("RAPPID_HOST")
+    if override:
+        return re.sub(r"[^a-z0-9-]+", "-", override.lower()).strip("-") or "local-host"
     h = ""
     if sys.platform == "darwin":
         try:
@@ -649,7 +655,9 @@ def cmd_party_export(out=None):
         "schema": "rappid-party-transfer/1",
         "host": hostslug(),
         "exported_at": now_iso(),
-        "party": [{k: v for k, v in r.items() if k != "dir"} for r in members],
+        "party": [dict({k: v for k, v in r.items() if k != "dir"},
+                        frames=molting.read_frames(os.path.join(RAPPIDS, r["dir"]), r))
+                  for r in members],
     }
     out = out or os.path.join(os.getcwd(), f"party-{hostslug()}.rappidparty")
     with open(out, "w") as f:
@@ -680,12 +688,27 @@ def cmd_party_import(path):
             rec["dir"] = f"{safe_slug(species)}-field-{gid}"
             rec.setdefault("lineage", []).append(f"field-return:{doc.get('host','?')}")
             try:
-                save_record(rec)
+                d = save_record(rec)
             except (ValueError, OSError) as e:
                 print(f"⚠️  refused a party member: {e}")
                 continue
+            if rec.get("frames"):
+                molting.write_frames(d, rec.pop("frames"))
             kind = "reassimilated" if rec.get("egg") else "reassimilated (silhouette — genome still afield)"
             print(f"🛬  {kind} {rec.get('display_name', gid)}")
+        else:
+            # this creature already lives here: it went out and came back changed
+            here = next((r for r in all_records() if r.get("genome_id") == gid), None)
+            if here and rec.get("frames"):
+                d = os.path.join(RAPPIDS, here["dir"])
+                merged, delta = molting.merge(molting.read_frames(d, here), rec["frames"])
+                molting.write_frames(d, merged)
+                here["molt"] = molting.fold(merged)
+                save_record(here)
+                if delta["gained"]:
+                    print(f"🐚  {here['display_name']} molted on return — "
+                          f"gained {delta['gained']} frame(s) earned in the field "
+                          f"({', '.join(here['molt']['traits']) or 'no new traits'})")
         ids.append(rec["rappid"])
     party = _read_party()
     party["active"] = ids[: party.get("max", 6)]
@@ -841,6 +864,86 @@ def _load_discovered():
             limbs=(1, 6), glow=(0.45, 0.45)))
 
 
+
+
+# ─────────────────────────────────────────────── mutation and the reunion molt
+def _record_dir_of(rec):
+    return os.path.join(RAPPIDS, rec["dir"])
+
+def cmd_mutate(key, kind, note=""):
+    """A creature earns a new frame from something it met. Its new sound grows
+    out of its own birth motif, so it still sounds like itself."""
+    rec = find_record(key)
+    if not rec:
+        sys.exit(f"no rappid matching '{key}'")
+    if not rec.get("birth"):
+        sys.exit(f"{rec['display_name']} has no birth to grow from — `bless` it first (SPEC §12)")
+    d = _record_dir_of(rec)
+    frames = molting.read_frames(d, rec)
+    try:
+        frame = molting.mutate(rec, kind, note or f"met something that needed {kind}", hostslug())
+    except ValueError as e:
+        sys.exit(str(e))
+    before = len(frames)
+    frames.append(frame)
+    molting.write_frames(d, frames)
+    form = molting.fold(frames)
+    rec["molt"] = form
+    save_record(rec)
+    grew = len(molting.order(frames)) > before
+    print(f"{'🧬' if grew else '↩︎'}  {rec['display_name']} "
+          f"{'grew a' if grew else 'already had that'} {kind} voice "
+          f"· {molting.MUTATION_KINDS[kind]['why']}")
+    print(f"    motif {' '.join(str(n) for n in frame['motif'])} · "
+          f"traits {', '.join(form['traits']) or 'none'} · molt {form['molt_id']}")
+    return rec
+
+def cmd_frames(key):
+    rec = find_record(key)
+    if not rec:
+        sys.exit(f"no rappid matching '{key}'")
+    frames = molting.read_frames(_record_dir_of(rec), rec)
+    form = molting.fold(frames)
+    print(f"{rec['display_name']} — molt {form['molt_id']}, {form['frames']} frame(s)")
+    print(f"  dimensions: {', '.join(form['dimensions']) or hostslug()}")
+    print(f"  traits:     {', '.join(form['traits']) or 'none yet'}")
+    for f in molting.order(frames):
+        tag = f.get("mutation") or f.get("kind")
+        print(f"  · {f.get('at','')[:19] or '(no time)'}  {tag:9s} {f.get('host',''):22s} "
+              f"{' '.join(str(n) for n in f.get('motif', []))}")
+    return form
+
+def cmd_molt(key, other_path=None):
+    """Reunion: fold this dimension together with one that lived apart.
+    Both sides come out identical; neither loses what it learned alone."""
+    rec = find_record(key)
+    if not rec:
+        sys.exit(f"no rappid matching '{key}'")
+    d = _record_dir_of(rec)
+    local = molting.read_frames(d, rec)
+    incoming = []
+    if other_path:
+        with open(os.path.expanduser(other_path)) as f:
+            doc = json.load(f)
+        if doc.get("schema") == "rappid-party-transfer/1":
+            for member in doc.get("party", []):
+                if member.get("rappid") == rec["rappid"]:
+                    incoming = member.get("frames") or []
+        elif isinstance(doc.get("frames"), list):
+            incoming = doc["frames"]
+        else:
+            sys.exit("that document carries no frames for this creature")
+    merged, delta = molting.merge(local, incoming)
+    molting.write_frames(d, merged)
+    form = molting.fold(merged)
+    rec["molt"] = form
+    save_record(rec)
+    print(f"🐚  {rec['display_name']} molted — {form['frames']} frame(s), "
+          f"molt {form['molt_id']}")
+    print(f"    gained {delta['gained']} from the other dimension, "
+          f"kept {delta['kept']} of its own, {delta['shared']} shared")
+    print(f"    traits now: {', '.join(form['traits']) or 'none'}")
+    return form
 
 # ─────────────────────────────────────────────── emit: lock in a species' shape
 AGENT_TEMPLATE = '''"""
@@ -1204,6 +1307,10 @@ def main():
     sub.add_parser("verify").add_argument("key")
     p = sub.add_parser("emit"); p.add_argument("slug"); p.add_argument("-o", "--out")
     p = sub.add_parser("bless"); p.add_argument("key"); p.add_argument("--midwife"); p.add_argument("--attempts", type=int, default=3)
+    p = sub.add_parser("mutate"); p.add_argument("key")
+    p.add_argument("kind", choices=sorted(molting.MUTATION_KINDS)); p.add_argument("note", nargs="?", default="")
+    sub.add_parser("frames").add_argument("key")
+    p = sub.add_parser("molt"); p.add_argument("key"); p.add_argument("other", nargs="?")
     p = sub.add_parser("roar"); p.add_argument("species"); p.add_argument("--done", action="store_true")
     sub.add_parser("list")
     sub.add_parser("show").add_argument("key")
@@ -1221,6 +1328,9 @@ def main():
     elif a.cmd == "discover":
         cmd_discover(a.name, a.command, shape=a.shape, model=a.model, genus=a.genus)
     elif a.cmd == "emit": cmd_emit(a.slug, a.out)
+    elif a.cmd == "mutate": cmd_mutate(a.key, a.kind, a.note)
+    elif a.cmd == "frames": cmd_frames(a.key)
+    elif a.cmd == "molt": cmd_molt(a.key, a.other)
     elif a.cmd == "bless": cmd_bless(a.key, midwife=a.midwife, attempts=a.attempts)
     elif a.cmd == "verify":
         rec = find_record(a.key)

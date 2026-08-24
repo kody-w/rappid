@@ -186,4 +186,58 @@ ok("emitted agent names a tool class", "class TestspeciesHatcher" in src_text)
 ok("discovered species is hatchable", rx.cmd_hatch("testspecies", quiet=True,
    midwife="testspecies", attempts=1)[0] is not None)
 
+# ── 11. frames, mutation, and the reunion molt ──
+import molt as molting  # noqa: E402
+
+grower, _ = rx.cmd_hatch("copilot", quiet=True, midwife="stub", attempts=1)
+gdir = os.path.join(rx.RAPPIDS, grower["dir"])
+base = molting.read_frames(gdir, grower)
+ok("a creature starts at its birth frame", len(base) == 1 and base[0]["kind"] == "birth")
+
+rx.cmd_mutate(grower["genome_id"], "success", "shipped something")
+frames_a = molting.read_frames(gdir, grower)
+ok("mutation appends a frame", len(frames_a) == 2)
+ok("mutation grows from the birth motif",
+   frames_a[-1]["motif"] != grower["birth"]["motif"] and len(frames_a[-1]["motif"]) >= 3)
+
+# the same encounter twice is still one frame — a re-sync never duplicates
+dup = molting.mutate(grower, "success", "shipped something", grower["host"],
+                     at=frames_a[-1]["at"])
+merged_dup, delta_dup = molting.merge(frames_a, [dup])
+ok("identical frames merge to one", len(merged_dup) == len(frames_a) and delta_dup["gained"] == 0)
+
+# two dimensions that grew apart
+field = molting.mutate(grower, "alert", "caught a bad deploy", "kodys-iphone")
+home = molting.mutate(grower, "recovery", "recovered a migration", "kodys-laptop")
+left, _ = molting.merge(frames_a, [home])
+right, _ = molting.merge(frames_a, [field])
+reunited_a, da = molting.merge(left, right)
+reunited_b, db = molting.merge(right, left)
+ok("reunion is order-independent",
+   molting.fold(reunited_a)["molt_id"] == molting.fold(reunited_b)["molt_id"])
+ok("reunion keeps both dimensions' gains",
+   set(molting.fold(reunited_a)["traits"]) == {"success", "alert", "recovery"})
+ok("reunion records where it lived",
+   "kodys-iphone" in molting.fold(reunited_a)["dimensions"])
+ok("merging is idempotent",
+   molting.fold(molting.merge(reunited_a, reunited_a)[0])["molt_id"]
+   == molting.fold(reunited_a)["molt_id"])
+ok("a role keeps one voice", len(molting.fold(reunited_a)["voices"]) == 3)
+ok("mutating without a birth is refused",
+   molting.mutate(grower, "focus", "x", "h")["kind"] == "mutation")
+try:
+    molting.mutate(grower, "not-a-kind", "x", "h")
+    ok("unknown mutation refused", False)
+except ValueError:
+    ok("unknown mutation refused", True)
+
+# frames travel with the party and molt on return
+molting.write_frames(gdir, reunited_a)
+with open(os.path.join(os.path.dirname(rx.RAPPIDS), "party.json"), "w") as f:
+    json.dump({"schema": "rappid-party/1", "active": [grower["rappid"]], "max": 6}, f)
+carried = rx.cmd_party_export(os.path.join(TMP, "carry.rappidparty"))
+with open(carried) as f:
+    doc = json.load(f)
+ok("frames travel with the party", len(doc["party"][0].get("frames", [])) == len(reunited_a))
+
 print(f"\nSPECIES TESTS: {PASS}/{PASS} PASS")
