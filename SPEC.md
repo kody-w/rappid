@@ -184,8 +184,14 @@ carrying this layout is a DOGG repo, and every file rides
 rappidverse/index.json      — { doors: { <chant>: {chant, rappid, species,
                               door_sha256, door_bytes, …} } }
 rappidverse/doors/<chant>.json   — the full front door (rappid-frontdoor/1)
-rappidverse/peers.json      — { peers: ["owner/repo", …] } — federation spreads here
+rappidverse/peers.json      — { peers: ["owner/repo", …] } — the OWNER'S curated list
 ```
+
+**`main` is the normative branch.** Every rappidverse file is addressed at
+`raw.githubusercontent.com/<owner>/<repo>/main/rappidverse/…` — a repo whose
+default branch is named otherwise still serves the federation from a `main`
+branch. This is a deliberate wire contract, not an accident of the reference
+engine.
 
 **Trust (rapp/1 doctrine, not reinvented).** The index rides a mutable branch
 and is **discovery-only**; every index entry pins its door's exact bytes
@@ -207,15 +213,28 @@ the conformance vectors (`vectors/rappidex_vectors.json`, `chant`): a client
 that cannot reproduce them byte-exactly is not a rappidverse client. A chant
 is a 49-bit address, not a proof of identity — which is why a door must
 *answer* to its chant (below) and why a caller who knows the full rappid
-SHOULD compare it against the summoned door's.
+SHOULD demand it: clients MUST offer a way to pass the full rappid with a
+summon (`dogg summon <chant> --rappid <id>` in the reference engine) and MUST
+refuse a door carrying any other identity.
 
 **Federation.** A client keeps a local peer list (`federation.json`) and MAY
 `sync`: fetch each peer's `index.json`, then walk `peers.json` transitively
 (bounded depth and repo count) — so federating with one repo reaches the
 network it federates with. The synced cache maps chant → repo; the first repo
-answering a chant wins and later repos never override. `publish` writes the
-publishing device's peer list into the repo's `peers.json` (union), so the
-federation spreads through every published repo, from any client.
+answering a chant wins and later repos never override.
+
+**`peers.json` is curated, never exported.** A repo's peer list is its OWNER'S
+deliberate act: `publish` only guarantees the file exists (an empty skeleton)
+and MUST NOT write the publishing device's local federation into it — a
+device's `federation.json` is local configuration, and exporting it would
+publish every repo name the device ever pointed at. Spreading a peer means
+committing it to your repo's `peers.json` yourself.
+
+**Leaving is as real as joining.** Membership has no memory: every sync
+re-walks the CURRENT lists, so removal propagates exactly like addition —
+delete a peer from your repo's `peers.json` (or `dogg unfederate` it locally)
+and the next sync simply stops walking it. No cache, client, or repo is
+entitled to remember a peer the lists no longer name.
 
 **The owner convention (follow an account).** A public, non-fork, non-archived
 repository named `rappidverse-*` under a GitHub account is a DOGG repo by

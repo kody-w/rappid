@@ -1405,6 +1405,18 @@ def front_door(rec, frames):
         "published_by": owner(),
     }
 
+def _ensure_peers_file(checkout):
+    """A repo's peers.json is the repo OWNER'S curated list — a deliberate act,
+    never an export. Publish only guarantees the file exists (empty skeleton);
+    it never writes this device's federation.json into it: what a keeper
+    federates with locally is local configuration, and pushing it public would
+    leak every repo name the device ever pointed at (two-worlds rule)."""
+    peers_path = os.path.join(checkout, "rappidverse", "peers.json")
+    if not os.path.exists(peers_path):
+        with open(peers_path, "w") as f:
+            json.dump({"schema": "rappid-federation/1", "peers": []}, f, indent=2)
+    return peers_path
+
 def cmd_dogg_publish(key, repo=None, push=True):
     """Open the front door: publish this creature's public face from the owner's
     own repo, so it can be summoned from anywhere in the rappidverse."""
@@ -1445,16 +1457,7 @@ def cmd_dogg_publish(key, repo=None, push=True):
         door_bytes = (json.dumps(door, indent=2) + "\n").encode()
         with open(os.path.join(doors, f"{door['chant']}.json"), "wb") as f:
             f.write(door_bytes)
-        peers_path = os.path.join(checkout, "rappidverse", "peers.json")
-        try:
-            with open(peers_path) as f:
-                published_peers = set(json.load(f).get("peers", []))
-        except OSError:
-            published_peers = set()
-        published_peers.update(p for p in _federation_peers() if p != repo)
-        with open(peers_path, "w") as f:
-            json.dump({"schema": "rappid-federation/1",
-                       "peers": sorted(published_peers)}, f, indent=2)
+        _ensure_peers_file(checkout)
         index_path = os.path.join(checkout, "rappidverse", "index.json")
         try:
             with open(index_path) as f:
@@ -1489,9 +1492,11 @@ def cmd_dogg_publish(key, repo=None, push=True):
         print(f"    the front door is still here: {local_path}")
     return door
 
-def cmd_dogg_summon(chant, repo=None):
+def cmd_dogg_summon(chant, repo=None, rappid=None):
     """Say the chant anywhere: fetch the public face, then lay whatever private
-    layer this device holds over the top."""
+    layer this device holds over the top. A caller who knows the full rappid
+    passes it as `rappid` and the door must match it exactly — the chant is a
+    49-bit address, the identity is the proof (SPEC §11)."""
     source = chant
     pin = None      # set when the federation index pins the door's bytes
     spoken = None   # set when the summon was BY CHANT — the door must answer to it
@@ -1545,6 +1550,10 @@ def cmd_dogg_summon(chant, repo=None):
     rid = str(door.get("rappid") or "")
     if not RAPPID_RE.fullmatch(rid):
         sys.exit("that door carries no rapp/1 rappid (§3) — refused")
+    #  0. a caller who knows the full identity demands it — stronger than the
+    #     49-bit chant, and immune to a ground-out chant collision
+    if rappid and rid != rappid.strip():
+        sys.exit("that door does not carry the rappid you demanded — refused")
     #  1. the chant is the identity's own hash — a door summoned by chant must
     #     answer to it, or any repo could park a stranger under these words
     if spoken and chant_for({"rappid": rid}) != spoken:
@@ -1742,6 +1751,17 @@ def cmd_dogg_federate(repo):
     peers.append(repo)
     _write_federation(peers, _federation_follows())
     print(f"    federation: {', '.join(peers)}")
+    return peers
+
+def cmd_dogg_unfederate(repo):
+    """Leave a DOGG repo: drop it from this device's federation. Removal
+    propagates the same way membership does — every sync re-walks the CURRENT
+    lists, so a peer deleted here (or from a repo's curated peers.json) simply
+    stops being walked; nothing remembers it."""
+    peers = [p for p in _federation_peers() if p != repo]
+    _write_federation(peers, _federation_follows())
+    print(f"…  no longer federated with {repo}")
+    print(f"    federation: {', '.join(peers) if peers else '(empty)'}")
     return peers
 
 def cmd_dogg_sync(quiet=False):
@@ -1975,9 +1995,10 @@ def main():
     p.add_argument("--anchor", help="a file, link or note this mutation came from")
     p.add_argument("--anchor-title")
     p = sub.add_parser("dogg")
-    p.add_argument("verb", choices=["publish", "summon", "chant", "federate",
+    p.add_argument("verb", choices=["publish", "summon", "chant", "federate", "unfederate",
                                     "follow", "unfollow", "peers", "sync"])
     p.add_argument("key", nargs="?"); p.add_argument("--repo"); p.add_argument("--no-push", action="store_true")
+    p.add_argument("--rappid", help="demand this exact identity from the summoned door")
     sub.add_parser("frames").add_argument("key")
     p = sub.add_parser("molt"); p.add_argument("key"); p.add_argument("other", nargs="?")
     p = sub.add_parser("roar"); p.add_argument("species"); p.add_argument("--done", action="store_true")
@@ -2010,8 +2031,9 @@ def main():
         if a.verb in ("publish", "summon", "chant") and not a.key:
             sys.exit(f"dogg {a.verb} needs a rappid key or chant")
         if a.verb == "publish": cmd_dogg_publish(a.key, a.repo, push=not a.no_push)
-        elif a.verb == "summon": cmd_dogg_summon(a.key, a.repo)
+        elif a.verb == "summon": cmd_dogg_summon(a.key, a.repo, rappid=a.rappid)
         elif a.verb == "federate": cmd_dogg_federate(a.key or a.repo)
+        elif a.verb == "unfederate": cmd_dogg_unfederate(a.key or a.repo)
         elif a.verb == "follow": cmd_dogg_follow(a.key)
         elif a.verb == "unfollow": cmd_dogg_unfollow(a.key)
         elif a.verb == "peers":

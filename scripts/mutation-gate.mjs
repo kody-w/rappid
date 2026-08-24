@@ -150,6 +150,14 @@ const mutants = [
     test: "tests/test_species.py",
   },
   {
+    name: "summon-demanded-rappid-ignored",
+    file: "species/rappidex.py",
+    from: "if rappid and rid != rappid.strip():",
+    to: "if False:",
+    runner: "python",
+    test: "tests/test_species.py",
+  },
+  {
     name: "summon-unverified-birth",
     file: "species/rappidex.py",
     from: 'if not rite.verify_seal(door.get("birth") or {}, rid, str(door.get("species") or "wild")):',

@@ -558,4 +558,35 @@ os.environ["RAPPID_MUTE"] = "0"
 ok("RAPPID_MUTE=0 does not", not rx.is_muted())
 del os.environ["RAPPID_MUTE"]
 
+# ── peers are curated, never exported; leaving is as real as joining (SPEC §11) ──
+fake_repo = os.path.join(TMP, "fake-dogg-repo")
+os.makedirs(os.path.join(fake_repo, "rappidverse"), exist_ok=True)
+pp = rx._ensure_peers_file(fake_repo)
+ok("publish guarantees only an empty curated peers skeleton",
+   json.load(open(pp)) == {"schema": "rappid-federation/1", "peers": []})
+with open(pp, "w") as f:                    # the owner curates; the device federates
+    json.dump({"schema": "rappid-federation/1", "peers": ["curated/only"]}, f)
+rx._ensure_peers_file(fake_repo)
+ok("a curated peers.json is never overwritten or unioned with local federation",
+   json.load(open(pp))["peers"] == ["curated/only"]
+   and rx._federation_peers() != ["curated/only"])   # this device DOES federate elsewhere
+
+with open(rx.FEDERATION_FILE, "w") as f:
+    json.dump({"schema": "rappid-federation/1",
+               "peers": ["kody-w/rappterverse", "gone/away"], "follows": ["keeper"]}, f)
+rx.cmd_dogg_unfederate("gone/away")
+ok("unfederate drops the peer and keeps the rest",
+   rx._federation_peers() == ["kody-w/rappterverse"])
+ok("unfederate never touches follows", rx._federation_follows() == ["keeper"])
+rx.cmd_dogg_unfederate("kody-w/rappterverse")
+ok("a client may deliberately empty its federation", rx._federation_peers() == [])
+with open(rx.FEDERATION_FILE, "w") as f:
+    json.dump({"schema": "rappid-federation/1", "peers": ["kody-w/rappterverse"]}, f)
+
+# ── the caller who knows the full rappid demands it (SPEC §11) ──
+ok("a summon that demands the true rappid assembles",
+   rx.cmd_dogg_summon(chant, rappid=dogg_rec["rappid"])["rappid"] == dogg_rec["rappid"])
+ok("a summon that demands any other rappid is refused",
+   refused(lambda: rx.cmd_dogg_summon(chant, rappid="rappid:@test/other:" + "b" * 64)))
+
 print(f"\nSPECIES TESTS: {PASS}/{PASS} PASS")
