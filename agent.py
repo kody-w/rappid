@@ -53,7 +53,6 @@ def _load_engine():
         os.path.join(here, "species", "rappidex.py"),
         os.path.join(here, "rappidex.py"),
         os.path.expanduser("~/.rappidex/rappidex.py"),
-        os.path.expanduser("~/.pokedex/rappidex.py"),
     ]
     for c in candidates:
         if c and os.path.exists(c):

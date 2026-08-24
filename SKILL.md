@@ -21,10 +21,16 @@ that species — with a sovereign identity, a genome, and a portable egg.
 
 1. **Get the code**: clone `github.com/kody-w/rapp-zoo-v2` (RAPPid Zoo). The
    species engine is `species/rappidex.py` — Python 3 stdlib only.
-2. **Hatch**: `python3 species/rappidex.py hatch claude` (species names:
-   brainstem, claude, copilot, rappterbot, openrappter, opengrokbot, openclaw,
-   hermes, rapptwin, rapplication). You'll hear a fanfare and the species cry.
-   A `rappid.json` (schema `rapp/1`) now exists in `~/.rapp/rappids/`.
+2. **Hatch** — this is a *rite*, not a mint: `python3 species/rappidex.py hatch claude`
+   (species: brainstem, claude, copilot, rappterbot, openrappter, opengrokbot,
+   openclaw, hermes, rapptwin, rapplication). The zoo derives a cypher from the
+   creature's own rappid id and puts it to a real LLM — the **midwife**, reached
+   through an adapter in `species/hatchers.json`. The midwife must break the
+   cypher (the zoo verifies it cold) and compose a 7-note motif in the species'
+   register. Only then is anything written: `rappid.json` (`rapp/1`), the egg,
+   a `.mid` birth song, and the burned-in birth transcript. No LLM = no rappid —
+   which is exactly what proves that species runs on this machine.
+   `verify <species>` re-checks the seal and the birthday later.
 3. **Wire the cries** into your own lifecycle: run
    `python3 species/rappidex.py roar <species>` when the AI starts, and
    `... roar <species> --done` when it finishes. On Claude Code use
@@ -54,6 +60,15 @@ Read `SPEC.md` (the rappidex/1 protocol). Your implementation conforms iff it
 reproduces `vectors/rappidex_vectors.json` byte-exactly (PRNG stream and
 genome-id), keeps re-hatch idempotent, round-trips eggs unchanged, imports
 unknown species as `wild`, and derives the cry accent only from the genome id.
+
+## Meeting new species
+
+The rite is also how you *discover*: point it at an AI the dex has never seen —
+`python3 species/rappidex.py discover <name> --command '<how to call it>'`. If it
+can answer for itself it IS a species: its answering shape is kept as an adapter,
+its register and first motif seed its look and voice, and it joins this device's
+registry so you can hatch your own of it. At its simplest, an adapter is nothing
+more than a way to hand something this file and read what comes back.
 
 ## Boundaries
 

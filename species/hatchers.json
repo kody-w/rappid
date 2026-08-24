@@ -1,0 +1,33 @@
+{
+  "_doc": {
+    "what": "Hatcher adapters \u2014 the per-AI shape of the birth rite (SPEC \u00a712). Each entry says how to put the cypher to one LLM and how its answer comes back. The zoo never guesses a provider's shape; it reads it here.",
+    "placeholders": "{prompt} = shell-quoted challenge, {prompt_json} = JSON-encoded challenge",
+    "fields": "command (required), shape (cli|http|sdk), model, timeout (s), default (bool), discovered (bool \u2014 this adapter was learned on this device, not shipped)",
+    "discovery": "An unknown AI that can break the cypher IS a species: `rappidex discover <name> --command '<how to call it>'` runs the rite, records the answering shape, and adds the species to the dex \u2014 then you hatch your own of it."
+  },
+  "claude": {
+    "command": "claude -p {prompt}",
+    "shape": "cli",
+    "model": "claude",
+    "timeout": 180,
+    "default": true
+  },
+  "copilot": {
+    "command": "copilot -p {prompt} --allow-all-tools",
+    "shape": "cli",
+    "model": "gh-copilot",
+    "timeout": 240
+  },
+  "brainstem": {
+    "command": "python3 -c 'import json,sys,urllib.request;r=urllib.request.urlopen(urllib.request.Request(\"http://127.0.0.1:7071/chat\",json.dumps({\"user_input\":json.loads(sys.argv[1])}).encode(),{\"Content-Type\":\"application/json\"}),timeout=240);print(json.load(r).get(\"response\",\"\"))' {prompt_json}",
+    "shape": "http",
+    "model": "brainstem",
+    "timeout": 260
+  },
+  "openrappter": {
+    "command": "openrappter ask {prompt}",
+    "shape": "cli",
+    "model": "openrappter",
+    "timeout": 240
+  }
+}

@@ -8,6 +8,7 @@
 
 import { execFile, spawn } from "node:child_process";
 import fs from "node:fs";
+import { fileURLToPath } from "node:url";
 import os from "node:os";
 import path from "node:path";
 
@@ -111,21 +112,45 @@ export function sendToPC(rappid) {
   return partyState();
 }
 
+function which(binary) {
+  const dirs = (process.env.PATH || "").split(path.delimiter).filter(Boolean);
+  return dirs.some((dir) => {
+    try {
+      fs.accessSync(path.join(dir, binary), fs.constants.X_OK);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+}
+
+// Same fallback chain the species engine uses, so a cry never depends on one player.
 function playerCommand(file, rate) {
-  if (process.platform === "darwin") return ["afplay", ["-r", rate.toFixed(3), file]];
-  return ["ffplay", ["-nodisp", "-autoexit", "-loglevel", "quiet",
-    "-af", `atempo=${rate.toFixed(3)}`, file]];
+  if (process.platform === "darwin" && which("afplay")) {
+    return ["afplay", ["-r", rate.toFixed(3), file]];
+  }
+  if (which("ffplay")) {
+    return ["ffplay", ["-nodisp", "-autoexit", "-loglevel", "quiet",
+      "-af", `atempo=${rate.toFixed(3)}`, file]];
+  }
+  if (which("paplay")) return ["paplay", [file]];
+  if (which("aplay")) return ["aplay", ["-q", file]];
+  return null;
 }
 
 export function playCry(rec, { criesDir } = {}) {
   const dir = criesDir
     || (fs.existsSync(rec.cry || "") ? path.dirname(rec.cry) : null)
-    || path.join(path.dirname(new URL(import.meta.url).pathname), "..", "species", "cries");
+    // fileURLToPath, never URL.pathname: pathname is percent-encoded and keeps
+    // the leading slash before a Windows drive letter.
+    || path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "species", "cries");
   const file = path.join(dir, `${rec.species}.wav`);
   if (!fs.existsSync(file)) return false;
   const r = mkRng(rec.genome_id || rec.rappid);
   const rate = 0.94 + r() * 0.14; // the individual's accent — same math everywhere
-  const [cmd, args] = playerCommand(file, rate);
+  const player = playerCommand(file, rate);
+  if (!player) return false;
+  const [cmd, args] = player;
   const child = spawn(cmd, args, { stdio: "ignore", detached: true });
   child.on("error", () => {});
   child.unref();

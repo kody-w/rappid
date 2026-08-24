@@ -18,9 +18,19 @@ creature with a genome, a rarity, a hologram, and a portable egg.
 - **Field transfer** — the party travels: `party export` (AirDrop the `.rappidparty`), `party qr` (scan-to-carry hotlink), `party import` (reassimilate on return). SPEC §9.
 - **The GODD layer** — bind a PRIVATE repo as the god-save: `godd save` / `godd pull` sync creatures through the cloud (companions with access pull the party with no QR at all), `godd seal`/`unseal` add the sneakernet-key vault tier. SPEC §10. The reference keeper's GODD lives [here](https://github.com/kody-w/RAPP-Private-Workspace) — that link resolves only if your signed-in account has companion access. That's the point.
 
+**A rappid cannot be minted — it must be *born*.** At hatch, the zoo derives a
+cypher from the creature's own rappid id and puts it to a real LLM on this
+machine: the species must break it and compose the MIDI motif that becomes its
+voice. No seal, no creature — which is precisely what proves that AI is here.
+The rite also *discovers*: put it to an AI the dex has never met, and if it can
+answer for itself, its shape is recorded and it becomes a species you can hatch
+your own of. ([SPEC §12–13](SPEC.md))
+
 ```bash
-python3 species/rappidex.py hatch claude     # 🥚→🐣
+python3 species/rappidex.py hatch claude     # 🥚→🐣 an LLM must attest the birth
 python3 species/rappidex.py fuse claude copilot   # 🧬 breed a brand-new creature
+python3 species/rappidex.py verify claude    # re-check the seal + burned-in birthday
+python3 species/rappidex.py discover "Some New AI" --command '<how to call it>'
 python3 skins/rappid_skin.py --species copilot --port 7182   # wrap a 3rd-party AI
 ```
 

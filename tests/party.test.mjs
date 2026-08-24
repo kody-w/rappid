@@ -27,14 +27,14 @@ test("prng matches the species engine vectors", () => {
   assert.ok(Math.abs(r() - 0.22757202526554465) < 1e-15);
 });
 
-test("hatched rappids appear in the PC, never auto-partied", () => {
+test("hatched rappids appear in the roost, never auto-partied", () => {
   const a = mint("claude", 1);
   const state = partyState();
   assert.equal(state.active.length, 0);
   assert.ok(state.pc.some((r) => r.rappid === a));
 });
 
-test("party add / send-to-PC round trip", () => {
+test("party add / send-to-roost round trip", () => {
   const a = readRappids()[0].rappid;
   let state = addToParty(a);
   assert.deepEqual(state.active.map((r) => r.rappid), [a]);

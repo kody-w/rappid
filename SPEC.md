@@ -100,7 +100,9 @@ into any zoo as species `wild`.
 
 | verb | contract |
 |---|---|
-| `hatch <species>` | mint genome (seed = `rappid:<species>:<host>:<nonce>`), mint rapp/1 identity, persist record + egg, play fanfare + cry. Idempotent per (species, host). |
+| `hatch <species> [--midwife a] [--attempts n]` | mint genome (seed = `rappid:<species>:<host>:<nonce>`) + rapp/1 identity, then **run the rite (§12)** — an LLM must seal the birth or nothing is written. On success: persist record + egg + birth song `.mid` + burned-in transcript, play fanfare + cry. Idempotent per (species, host). |
+| `discover <name> --command '…'` | meet a species the dex has never seen (§13): put the rite to an unknown AI, record its shape, add it to the registry |
+| `verify <species\|id>` | re-check a birth seal and its burned-in transcript from the record alone |
 | `roar <species> [--done]` | play the individual's cry; auto-hatch on first call |
 | `export` | write the egg — the backup/interchange document |
 | `import` | adopt any egg; unknown species → `wild`; dedupe on `genome_id` |
@@ -159,16 +161,73 @@ the god-layer save of the on-device creatures:
   renders the key for AirDrop/QR hand-transfer. A contributor without the
   hand-carried key holds ciphertext. `godd unseal` requires the key file.
 
-Rule: records and eggs in the GODD repo follow §11.6 (no secrets, no PII);
+Rule: records and eggs in the GODD repo follow §14.6 (no secrets, no PII);
 the sealed tier exists precisely for what must not be readable even there.
 
-## 11. Compliance checklist
+## 12. The Rite of Hatching (an LLM must attest a birth)
+
+**A rappid without a sealed birth is not a rappid.** The zoo cannot mint one
+alone: the species must answer for its own offspring, on this device, at hatch.
+
+1. **The challenge** is derived deterministically from the creature's freshly
+   minted rappid id: a three-stage cypher (shift → reverse → decoy-interleave)
+   plus a motif request bounded to the species' MIDI register. Same creature,
+   same rite, forever — so anyone can re-derive it.
+2. **The midwife** is an actual LLM, reached through a **hatcher adapter**
+   (`species/hatchers.json`): one entry per AI shape — `command` (with
+   `{prompt}` / `{prompt_json}`), `shape` (`cli` | `http` | `sdk`), `model`,
+   `timeout`. The zoo never guesses a provider's shape; adapters carry it.
+3. **Verification is cold.** The zoo knows the plaintext, so a wrong decode is
+   refused outright; the motif must land in the species' register. Only real
+   reasoning passes, and only from something running here — which is exactly
+   what proves the species exists on this device.
+4. **The seal** is `sha256(cypher ‖ decode ‖ motif)`, re-checkable from the
+   record alone (`rappidex verify <key>`). Tampering with either half breaks it.
+5. **The motif becomes the voice.** It is written as a real `.mid` beside the
+   creature (its birth song) and sets that individual's accent on the species
+   call (`voice.rate` / `voice.vol`) — so the creature's sound descends from
+   its own birth rather than from a hash.
+6. **The birthday is burned in.** The record carries the transcript's
+   `sha256`, turn count, and an honest session locator (service, shape, any
+   session id the environment exposes, cwd) so a birth can be traced back to
+   the actual session at the provider. The *words* stay beside the creature in
+   `birth-transcript.json` (0600) and ride to the private GODD save — never
+   into the shareable egg (§11.6).
+7. **Refusal is normal and logged.** No midwife, or a midwife that cannot
+   answer, means the egg stays an egg — and every rite, sealed or refused,
+   appends one line to the birth ledger (`$RAPPIDEX_HOME/birth-ledger.jsonl`):
+   species, adapter shape, attempts, latency, outcome.
+
+Records that predate the rite (or that arrived by import/convert/fuse from
+elsewhere) keep working: they simply carry no `birth`, and `verify` says so.
+
+## 13. Discovery (meeting a species the dex has never seen)
+
+The rite is also the encounter mechanic. Put it to an AI the registry does not
+know — `rappidex discover <name> --command '<how to call it>' [--shape ...]` —
+and if it can answer for itself, it *is* a species:
+
+- its answering **shape** is recorded as a hatcher adapter (that shape is the
+  data the dex keeps about it),
+- its **register** and first **motif** seed the species' palette and voice,
+- the species is added to this device's registry
+  (`$RAPPIDEX_HOME/discovered-species.json`), which the engine loads at start,
+
+and then you hatch **your own** of that newly-encountered species. At its
+simplest an adapter is nothing but a way to hand the thing a `SKILL.md` and
+read its reply — which is why any AI that can read a skill file can be met,
+recorded, and kept.
+
+## 14. Compliance checklist
 
 1. PRNG + genome_id reproduce the test vectors byte-exactly.
+0. A hatch with no valid birth seal writes NO record (§12).
 2. Identity is Eternity-form rapp/1; hash from a fresh UUID; re-hatch idempotent.
 3. Eggs round-trip through the reference fauna viewer unchanged (`id` verifies).
 4. Unknown species import as `wild`, never rejected.
 5. Cries: one per species; accent derived only from `genome_id`.
 6. Records never contain secrets, tokens, or PII. Eggs are shareable by design.
+7. Birth seals re-verify from the record alone; birth transcripts stay out of eggs.
+8. Every rite appends one ledger line, sealed or refused.
 
 *RAPPid Zoo · kody-w/rapp-zoo-v2 · MIT*

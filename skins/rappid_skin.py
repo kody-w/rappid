@@ -21,8 +21,10 @@ Usage:
         --command 'claude -p {prompt}'
     python3 skins/rappid_skin.py --species copilot --port 7182   # from skins.json
 
-`{prompt}` is replaced with the user_input (shell-quoted). With no --command,
-the species entry in skins.json supplies it. Stdlib only.
+`{prompt}` is replaced with the user_input, shell-quoted for an argv slot.
+`{prompt_json}` is replaced with the JSON-encoded string — use that one whenever
+the prompt lands inside a JSON body, because shell quoting is not JSON quoting.
+With no --command, the species entry in skins.json supplies it. Stdlib only.
 """
 import argparse
 import json
@@ -53,13 +55,20 @@ class Skin:
         self.command = command
         self.timeout = timeout
         self.rec, hatched = rappidex.cmd_hatch(species, quiet=True)
+        if self.rec is None:
+            raise SystemExit(
+                f"✋ '{species}' has no rappid on this device and none could be hatched — "
+                "the rite needs an LLM to attest the birth (SPEC §12). Add an adapter to "
+                "species/hatchers.json, or point RAPPID_HATCHERS/RAPPID_MIDWIFE at one.")
         if hatched:
             rappidex.play_hatch_fanfare(self.rec)
         self.sessions = {}
 
     def chat(self, user_input, session_id):
         rappidex.play_cry(self.rec)                      # announce: the species call
-        cmd = self.command.replace("{prompt}", shlex.quote(user_input))
+        cmd = (self.command
+               .replace("{prompt_json}", shlex.quote(json.dumps(user_input)))
+               .replace("{prompt}", shlex.quote(user_input)))
         try:
             proc = subprocess.run(cmd, shell=True, capture_output=True,
                                   text=True, timeout=self.timeout)

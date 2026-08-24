@@ -341,7 +341,7 @@ register("zoo:party-pc", async (rappid) => {
   ledger.append({
     action: "party.pc",
     status: "completed",
-    summary: "A rappid was sent to the PC.",
+    summary: "A rappid was sent to the roost.",
     evidence: [rappid],
   });
   return result;

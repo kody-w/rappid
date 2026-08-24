@@ -21,7 +21,10 @@ holodex", "skin <ai> so it can join the zoo".
 ## Commands (the engine is `species/rappidex.py`, stdlib-only)
 
 ```bash
-python3 species/rappidex.py hatch <species>     # first invocation = birth (idempotent)
+python3 species/rappidex.py hatch <species>     # THE RITE: an LLM must seal the birth (§12)
+python3 species/rappidex.py hatch <species> --midwife claude   # choose who attends
+python3 species/rappidex.py verify <species>    # re-check the seal + burned-in birthday
+python3 species/rappidex.py discover <name> --command '<how to call that AI>'  # meet a new species
 python3 species/rappidex.py roar <species>      # play the species call, individual accent
 python3 species/rappidex.py list                # the dex
 python3 species/rappidex.py export <species|id> -o backup.egg
@@ -40,6 +43,8 @@ Cries ship in `species/cries/`; regenerate with `python3 species/gen_cries.py` (
 
 ## Rules
 
+- **No LLM, no rappid.** `hatch` runs the Rite of Hatching: the species breaks a cypher derived from its own rappid id and composes the MIDI motif that becomes its voice. An unsealed birth writes NOTHING. Adapters live in `species/hatchers.json` — at its simplest an adapter is just "hand this thing the prompt and read the reply".
+- Every rite appends a line to `$RAPPIDEX_HOME/birth-ledger.jsonl` (species, shape, attempts, latency, outcome). The birthday transcript sits beside the creature and syncs privately with `godd save`; it never enters an egg.
 - Re-hatch NEVER re-mints: the stored `rappid.json` is authoritative (rapp/1).
 - Species not in the registry import as `wild` — never reject an egg.
 - The cry accent comes only from `genome_id` — same creature, same voice, everywhere.

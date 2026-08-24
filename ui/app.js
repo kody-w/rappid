@@ -472,13 +472,15 @@ async function renderParty() {
     card.appendChild(element("p", { className: "mono", text: `${rec.species} · ${rec.rarity || "?"} · ${rec.genome_id || ""}` }));
     card.appendChild(element("p", { className: "mono", text: rec.rappid }));
     const actions = element("div", { className: "actions" });
-    const cry = element("button", { text: "▶ cry", type: "button" });
+    const tailId = rec.rappid.split(":").pop().slice(0, 12);
+    const cry = element("button", { text: "▶ cry", type: "button", control: `party.cry.${tailId}` });
     cry.addEventListener("click", () => { window.zoo.partyCry(rec.rappid); });
     actions.appendChild(cry);
     const move = element("button", {
       text: inParty ? "send to roost" : "add to party",
       type: "button",
       className: inParty ? "" : "primary",
+      control: inParty ? `party.roost.${tailId}` : `party.add.${tailId}`,
     });
     move.addEventListener("click", async () => {
       try {

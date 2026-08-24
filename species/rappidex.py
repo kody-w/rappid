@@ -44,10 +44,11 @@ import time
 import uuid
 from datetime import datetime, timezone
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import birth as rite
+
 HOME = os.path.expanduser("~")
-_legacy = os.path.join(HOME, ".pokedex")
-DEX_HOME = os.environ.get("RAPPIDEX_HOME") or (
-    _legacy if os.path.isdir(_legacy) else os.path.join(HOME, ".rappidex"))
+DEX_HOME = os.environ.get("RAPPIDEX_HOME") or os.path.join(HOME, ".rappidex")
 _HERE = os.path.dirname(os.path.abspath(__file__))
 CRIES = os.path.join(DEX_HOME, "cries")
 if not os.path.isdir(CRIES) and os.path.isdir(os.path.join(_HERE, "cries")):
@@ -275,6 +276,18 @@ def hostslug():
 def now_iso():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
+_GID_RE = re.compile(r"^[0-9a-f]{6,64}$")
+
+def safe_slug(text, fallback="wild"):
+    """Any component that reaches a record directory must survive this."""
+    cleaned = re.sub(r"[^A-Za-z0-9._-]", "", str(text or ""))[:48].strip(".-_")
+    return cleaned or fallback
+
+def safe_gid(gid):
+    """Genome ids are hex digests. Anything else is not one."""
+    gid = str(gid or "")
+    return gid[:12] if _GID_RE.match(gid) else hashlib.sha256(gid.encode()).hexdigest()[:12]
+
 def record_dir(species):
     return os.path.join(RAPPIDS, f"{species}-{hostslug()}")
 
@@ -311,12 +324,20 @@ def find_record(key):
     return None
 
 def save_record(rec):
+    # A record directory is ALWAYS a single sanitized component inside RAPPIDS.
+    # Eggs and party documents arrive from other devices; they never choose a path.
+    rec["dir"] = safe_slug(os.path.basename(str(rec.get("dir") or "")), fallback="wild")
     d = os.path.join(RAPPIDS, rec["dir"])
+    root = os.path.realpath(RAPPIDS)
+    if os.path.commonpath([root, os.path.realpath(d)]) != root:
+        raise ValueError(f"refused: record directory escapes the zoo ({rec['dir']!r})")
     os.makedirs(d, exist_ok=True)
     with open(os.path.join(d, "rappid.json"), "w") as f:
         json.dump(rec, f, indent=2)
-    with open(os.path.join(d, f"rappter-{rec['genome_id'][:8]}.egg"), "w") as f:
-        f.write(rec["egg"])
+    egg = rec.get("egg")
+    if egg:  # hotlink-born records carry identity only until their genome arrives
+        with open(os.path.join(d, f"rappter-{safe_gid(rec.get('genome_id'))}.egg"), "w") as f:
+            f.write(egg)
     return d
 
 def mint_record(species, genome, kind="creature", lineage=None, slug=None, dirname=None):
@@ -392,7 +413,10 @@ def play_hatch_fanfare(rec):
     play_cry(rec, wait=True)
 
 # ─────────────────────────────────────────────── lifecycle commands
-def cmd_hatch(species, quiet=False):
+def cmd_hatch(species, quiet=False, midwife=None, attempts=3):
+    """A rappid is born only when an LLM attests it (SPEC §12). The species
+    itself breaks a cypher derived from the creature's own rappid id and
+    autocompletes the motif that becomes its voice. Unsealed = never written."""
     if species not in SPECIES:
         sys.exit(f"unknown species '{species}' — known: {', '.join(SPECIES)}")
     rec = load_record(species)
@@ -401,11 +425,26 @@ def cmd_hatch(species, quiet=False):
     seed = f"rappid:{species}:{hostslug()}:{uuid.uuid4().hex[:8]}"
     genome = generate_genome(species, seed)
     rec = mint_record(species, genome)
+    log = (lambda *a: None) if quiet else print
+    hatchers = rite.load_hatchers(_HERE, DEX_HOME)
+    birth, exhaust = rite.attend_birth(rec["rappid"], species, hatchers,
+                                       midwife=midwife, attempts=attempts, log=log)
+    rite.append_ledger(DEX_HOME, exhaust)
+    if not birth:
+        log("🥚  the egg stays an egg — no LLM attested this birth, so there is no rappid.")
+        return None, False
+    transcript = birth.pop("_transcript", [])
+    rec["birth"] = birth
+    rec["voice"] = rite.motif_voice(birth["motif"], birth["register"])
+    d = save_record(rec)
+    rec["midi"] = rite.write_midi(os.path.join(d, f"birth-{rec['genome_id']}.mid"), birth["motif"])
+    rite.write_transcript(os.path.join(d, "birth-transcript.json"), birth, transcript, rec["rappid"])
     save_record(rec)
     if not quiet:
         play_hatch_fanfare(rec)
         print(f"🥚→🐣  {rec['display_name']} hatched!  [{rec['rarity']}]  {rec['genome_id']}")
         print(f"       {rec['rappid']}")
+        print(f"       sealed by {birth['midwife']['name']} · birth song {os.path.basename(rec['midi'])}")
     return rec, True
 
 def cmd_roar(species, done=False):
@@ -454,18 +493,21 @@ def cmd_import(path):
     species = genome.get("species") or "wild"
     if species not in SPECIES:
         species = "wild"
-    gid = p.get("id") or genome_id(genome)
-    dirname = f"{species}-import-{gid[:8]}"
+    gid = safe_gid(p.get("id") or genome_id(genome))
+    dirname = f"{safe_slug(species)}-import-{gid}"
     existing = [r for r in all_records() if r.get("genome_id") == gid]
     if existing:
         print(f"already in the dex: {existing[0]['display_name']} [{gid}]")
         return existing[0]
     rec = mint_record(species, genome, kind="creature",
                       lineage=[f"imported:{p.get('source','unknown')}"],
-                      slug=f"{species}-import-{gid[:8]}", dirname=dirname)
+                      slug=dirname, dirname=dirname)
     rec["display_name"] = f"{p.get('title', SPECIES[species]['name'])} (imported)"
     rec["rarity"] = p.get("rarity", rec["rarity"])
     rec["born"] = p.get("born", rec["born"])
+    # the record and its egg must tell the same story: keep the arriving bytes
+    rec["egg"] = egg
+    rec["genome_id"] = gid
     save_record(rec)
     play_cry(rec)
     print(f"🛬  imported {rec['display_name']} as species '{species}'  [{rec['rarity']}]  {gid}")
@@ -548,16 +590,18 @@ def cmd_fuse(key_a, key_b, species=None):
 
 def cmd_holodex(open_it=True):
     tpl = os.path.join(DEX_HOME, "holodex_template.html")
+    if not os.path.exists(tpl):
+        tpl = os.path.join(_HERE, "holodex_template.html")   # repo checkout
     out = os.path.join(DEX_HOME, "holodex.html")
     if not os.path.exists(tpl):
-        sys.exit("holodex_template.html missing beside rappidex.py")
-    roster = []
-    for rec in all_records():
-        roster.append(dict(species=rec.get("species"), name=rec.get("display_name"),
-                           rarity=rec.get("rarity"), id=rec.get("genome_id"),
-                           rappid=rec.get("rappid"), egg=rec.get("egg")))
+        sys.exit("holodex_template.html not found in $RAPPIDEX_HOME or beside rappidex.py")
+    os.makedirs(DEX_HOME, exist_ok=True)
+    records = [r for r in all_records() if r.get("egg")]
+    roster = [dict(species=r.get("species"), name=r.get("display_name"),
+                   rarity=r.get("rarity"), id=r.get("genome_id"),
+                   rappid=r.get("rappid"), egg=r.get("egg")) for r in records]
     # each individual voices the species cry with its own accent
-    for entry, rec in zip(roster, all_records()):
+    for entry, rec in zip(roster, records):
         rate, vol = cry_params(rec)
         entry["rate"], entry["vol"] = round(rate, 3), round(vol, 2)
     cries = {}
@@ -624,13 +668,24 @@ def cmd_party_import(path):
     have = {r.get("genome_id") for r in all_records()}
     ids = []
     for rec in doc.get("party", []):
-        gid = rec.get("genome_id")
+        if not isinstance(rec, dict) or not rec.get("rappid"):
+            print("⚠️  skipped a malformed party member")
+            continue
+        gid = safe_gid(rec.get("genome_id"))
+        species = rec.get("species") if rec.get("species") in SPECIES else "wild"
         if gid not in have:
             rec = dict(rec)
-            rec["dir"] = f"{rec.get('species','wild')}-field-{gid[:8]}"
+            rec["species"] = species
+            rec["genome_id"] = gid
+            rec["dir"] = f"{safe_slug(species)}-field-{gid}"
             rec.setdefault("lineage", []).append(f"field-return:{doc.get('host','?')}")
-            save_record(rec)
-            print(f"🛬  reassimilated {rec.get('display_name', gid)}")
+            try:
+                save_record(rec)
+            except (ValueError, OSError) as e:
+                print(f"⚠️  refused a party member: {e}")
+                continue
+            kind = "reassimilated" if rec.get("egg") else "reassimilated (silhouette — genome still afield)"
+            print(f"🛬  {kind} {rec.get('display_name', gid)}")
         ids.append(rec["rappid"])
     party = _read_party()
     party["active"] = ids[: party.get("max", 6)]
@@ -686,6 +741,86 @@ def cmd_party_qr(out=None):
         print("(python 'qrcode' package not installed — payload printed above; "
               "pip install qrcode for the scannable page)")
     return payload
+
+
+def cmd_discover(name, command, shape="cli", model=None, genus=None):
+    """Encounter a new species: put the rite to an AI the dex has never seen.
+    If it answers, its shape is recorded as a hatcher adapter and the species
+    enters this device's registry — then you hatch your own of it."""
+    slug = safe_slug(name.lower(), fallback="")
+    if not slug:
+        sys.exit("a species needs a name")
+    hatchers = rite.load_hatchers(_HERE, DEX_HOME)
+    probe_id = hashlib.sha256(f"discover:{slug}:{hostslug()}".encode()).hexdigest()
+    hatchers[slug] = {"command": command, "shape": shape, "model": model or slug,
+                      "timeout": 240, "discovered": True}
+    print(f"🔍  putting the rite to '{slug}' to see whether it is a species…")
+    birth, exhaust = rite.attend_birth(probe_id, slug if slug in SPECIES else "wild",
+                                       hatchers, midwife=slug, attempts=2)
+    exhaust["discovery"] = slug
+    rite.append_ledger(DEX_HOME, exhaust)
+    if not birth:
+        print(f"✋  '{slug}' could not answer for itself — no species recorded.")
+        return None
+    # the answering shape IS the species' data shape — kept with this device's
+    # dex, never written back into the shipped registry
+    os.makedirs(DEX_HOME, exist_ok=True)
+    path = os.path.join(DEX_HOME, "hatchers.json")
+    try:
+        with open(path) as f:
+            stored = json.load(f)
+    except OSError:
+        stored = {}
+    stored[slug] = hatchers[slug]
+    with open(path, "w") as f:
+        json.dump(stored, f, indent=2)
+    dex_path = os.path.join(DEX_HOME, "discovered-species.json")
+    try:
+        with open(dex_path) as f:
+            found = json.load(f)
+    except OSError:
+        found = {}
+    lo, hi = birth["register"]
+    r = mk_rng(birth["seal"])
+    found[slug] = {
+        "name": name, "genus": genus or "Inventa", "discovered_at": now_iso(),
+        "host": hostslug(), "shape": shape, "register": [lo, hi],
+        "motif": birth["motif"], "seal": birth["seal"],
+        "blurb": f"Encountered on {hostslug()}; answered the rite in "
+                 f"{birth['attempts']} attempt(s) through a {shape} shape.",
+        "palettes": [["#%02x%02x%02x" % tuple(int(120 + r() * 135) for _ in range(3))
+                      for _ in range(4)]],
+    }
+    with open(dex_path, "w") as f:
+        json.dump(found, f, indent=2)
+    if slug not in SPECIES:
+        SPECIES[slug] = dict(
+            name=name, genus=genus or "Inventa",
+            blurb=found[slug]["blurb"], palettes=found[slug]["palettes"],
+            shapes=[("blob", 0.4), ("star", 0.35), ("ring", 0.25)], symmetry_radial=0.5,
+            patterns=[("glow", 0.4), ("spot", 0.35), ("stripe", 0.25)],
+            limbs=(1, 6), glow=(0.45, 0.45))
+    print(f"📖  NEW SPECIES RECORDED — {name} ({found[slug]['genus']}), "
+          f"register {lo}-{hi}, shape '{shape}'")
+    print(f"    now hatch your own:  rappidex hatch {slug}")
+    return found[slug]
+
+
+def _load_discovered():
+    """Species learned on this device join the registry at import time."""
+    try:
+        with open(os.path.join(DEX_HOME, "discovered-species.json")) as f:
+            found = json.load(f)
+    except OSError:
+        return
+    for slug, d in found.items():
+        SPECIES.setdefault(slug, dict(
+            name=d.get("name", slug), genus=d.get("genus", "Inventa"),
+            blurb=d.get("blurb", "A species discovered on this device."),
+            palettes=d.get("palettes") or [["#f2d49b", "#d59a4e", "#8a4f22", "#ff9d3c"]],
+            shapes=[("blob", 0.4), ("star", 0.35), ("ring", 0.25)], symmetry_radial=0.5,
+            patterns=[("glow", 0.4), ("spot", 0.35), ("stripe", 0.25)],
+            limbs=(1, 6), glow=(0.45, 0.45)))
 
 
 # ─────────────────────────────────────────────── the GODD layer (private save)
@@ -836,7 +971,13 @@ def cmd_godd_keyqr(out=None):
 def main():
     ap = argparse.ArgumentParser(prog="rappidex")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("hatch").add_argument("species")
+    p = sub.add_parser("hatch"); p.add_argument("species")
+    p.add_argument("--midwife", help="which hatcher adapter attests this birth")
+    p.add_argument("--attempts", type=int, default=3)
+    p = sub.add_parser("discover"); p.add_argument("name")
+    p.add_argument("--command", required=True, help="how to call this AI ({prompt} / {prompt_json})")
+    p.add_argument("--shape", default="cli"); p.add_argument("--model"); p.add_argument("--genus")
+    sub.add_parser("verify").add_argument("key")
     p = sub.add_parser("roar"); p.add_argument("species"); p.add_argument("--done", action="store_true")
     sub.add_parser("list")
     sub.add_parser("show").add_argument("key")
@@ -849,7 +990,33 @@ def main():
     p = sub.add_parser("godd"); p.add_argument("verb", choices=["save", "pull", "seal", "unseal", "keyqr"]); p.add_argument("name", nargs="?"); p.add_argument("--host"); p.add_argument("-o", "--out")
     a = ap.parse_args()
     os.makedirs(RAPPIDS, exist_ok=True)
-    if a.cmd == "hatch": cmd_hatch(a.species)
+    _load_discovered()
+    if a.cmd == "hatch": cmd_hatch(a.species, midwife=a.midwife, attempts=a.attempts)
+    elif a.cmd == "discover":
+        cmd_discover(a.name, a.command, shape=a.shape, model=a.model, genus=a.genus)
+    elif a.cmd == "verify":
+        rec = find_record(a.key)
+        if not rec: sys.exit(f"no rappid matching '{a.key}'")
+        b = rec.get("birth")
+        if not b: sys.exit(f"{rec['display_name']} carries no birth record — it predates the rite")
+        good = rite.verify_seal(b)
+        print(f"{'✅' if good else '❌'} {rec['display_name']} — birth seal "
+              f"{'verifies' if good else 'DOES NOT verify'} "
+              f"(sealed by {b['midwife']['name']}, motif {' '.join(map(str, b['motif']))})")
+        tpath = os.path.join(RAPPIDS, rec["dir"], "birth-transcript.json")
+        if b.get("transcript"):
+            if os.path.exists(tpath):
+                tok = rite.verify_transcript(b, tpath)
+                sess = b["transcript"]["session"]
+                print(f"{'✅' if tok else '❌'} birthday transcript "
+                      f"{'matches its seal' if tok else 'DOES NOT match'} — "
+                      f"{b['transcript']['turns']} turn(s) with {sess.get('service')} "
+                      f"({sess.get('shape')}), {tpath}")
+                good = good and tok
+            else:
+                print(f"⚠️  birthday transcript not on this device "
+                      f"(fingerprint {b['transcript']['sha256'][:12]}) — pull it with `godd pull`")
+        sys.exit(0 if good else 1)
     elif a.cmd == "roar": cmd_roar(a.species, done=a.done)
     elif a.cmd == "list": cmd_list()
     elif a.cmd == "show": cmd_show(a.key)

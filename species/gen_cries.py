@@ -17,9 +17,7 @@ import wave
 import numpy as np
 
 SR = 44100
-_HOME = os.environ.get("RAPPIDEX_HOME") or (
-    os.path.expanduser("~/.pokedex") if os.path.isdir(os.path.expanduser("~/.pokedex"))
-    else os.path.expanduser("~/.rappidex"))
+_HOME = os.environ.get("RAPPIDEX_HOME") or os.path.expanduser("~/.rappidex")
 OUT = os.path.join(_HOME, "cries")
 
 

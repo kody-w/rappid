@@ -1,13 +1,30 @@
 {
-  "claude":      { "command": "claude -p {prompt}",
-                   "notes": "Claude Code CLI, non-interactive print mode" },
-  "copilot":     { "command": "copilot -p {prompt} --allow-all-tools",
-                   "notes": "GitHub Copilot CLI, non-interactive" },
-  "openrappter": { "command": "openrappter ask {prompt}",
-                   "notes": "OpenRappter local agent" },
-  "brainstem":   { "command": "curl -s -X POST http://127.0.0.1:7071/chat -H 'Content-Type: application/json' -d '{\"user_input\": {prompt}}'",
-                   "notes": "already speaks the seam natively — skin adds only the species voice; prefer attaching the brainstem directly" },
-  "opengrokbot": { "command": null, "notes": "fill in when its CLI lands" },
-  "openclaw":    { "command": null, "notes": "fill in when its CLI lands" },
-  "hermes":      { "command": null, "notes": "fill in when its CLI lands" }
+  "claude": {
+    "command": "claude -p {prompt}",
+    "notes": "Claude Code CLI, non-interactive print mode"
+  },
+  "copilot": {
+    "command": "copilot -p {prompt} --allow-all-tools",
+    "notes": "GitHub Copilot CLI, non-interactive"
+  },
+  "openrappter": {
+    "command": "openrappter ask {prompt}",
+    "notes": "OpenRappter local agent"
+  },
+  "brainstem": {
+    "command": "python3 -c 'import json,sys,urllib.request;r=urllib.request.urlopen(urllib.request.Request(\"http://127.0.0.1:7071/chat\",json.dumps({\"user_input\":json.loads(sys.argv[1])}).encode(),{\"Content-Type\":\"application/json\"}),timeout=300);print(json.load(r).get(\"response\",\"\"))' {prompt_json}",
+    "notes": "already speaks the seam natively \u2014 the skin adds only the species voice and unwraps the inner `response`. Prefer attaching the brainstem directly."
+  },
+  "opengrokbot": {
+    "command": null,
+    "notes": "fill in when its CLI lands"
+  },
+  "openclaw": {
+    "command": null,
+    "notes": "fill in when its CLI lands"
+  },
+  "hermes": {
+    "command": null,
+    "notes": "fill in when its CLI lands"
+  }
 }
