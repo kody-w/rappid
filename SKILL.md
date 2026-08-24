@@ -19,7 +19,7 @@ that species — with a sovereign identity, a genome, and a portable egg.
 
 ## What to do, step by step
 
-1. **Get the code**: clone `github.com/kody-w/rapp-zoo-v2` (RAPPid Zoo). The
+1. **Get the code**: clone `github.com/kody-w/rappid` (RAPPid Zoo). The
    species engine is `species/rappidex.py` — Python 3 stdlib only.
 2. **Hatch** — this is a *rite*, not a mint: `python3 species/rappidex.py hatch claude`
    (species: brainstem, claude, copilot, rappterbot, openrappter, opengrokbot,
@@ -75,6 +75,16 @@ species (with a `<Slug>Hatcher` tool) and its own `rapp_skill.md`, written from
 what the AI actually did — so the next agent gets full fidelity without
 rediscovering anything. Creatures older than the rite can be attested later
 with `bless`, which keeps their identity and marks the seal as blessed.
+
+You rarely start from zero: the zoo **ships default shapes** for every species
+it already knows (`species/emit/<slug>/agents/<slug>_hatcher_agent.py` +
+`<slug>.rapp_skill.md`). Ask for one with
+`python3 species/rappidex.py shape <species>` — it resolves the hotloadable
+`agent.py` (a device emit from a real rite outranks the shipped default, and a
+shipped species mints its default on demand). Hotload that file and you can
+speak to the species immediately — no re-feeding a skill to the next one you
+meet — and whatever it hatches can join the active party.
+`emit --all` regenerates every shape a device knows.
 
 ## Boundaries
 

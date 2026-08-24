@@ -2,7 +2,7 @@
 
 RAPP Zoo v2 is a local prototype workbench, not a production deployment
 platform. Report vulnerabilities privately through GitHub Security Advisories
-for `kody-w/rapp-zoo-v2`.
+for `kody-w/rappid`.
 
 Never include credentials, customer data, private summon bytes, control tokens,
 autopilot metadata, or generated reports in an issue.

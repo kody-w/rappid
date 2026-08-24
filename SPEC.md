@@ -1,6 +1,6 @@
 # rappidex/1 — the RAPPid Zoo species protocol
 
-*The species layer of [RAPPid Zoo](README.md) (`kody-w/rapp-zoo-v2`).*
+*The species layer of [RAPPid Zoo](README.md) (`kody-w/rappid`).*
 
 > Every AI is a **species**. Every running instance is a **rappid** — a creature
 > hatched on a host, with a sovereign identity, a voice, a hologram, and an egg.
@@ -104,7 +104,9 @@ into any zoo as species `wild`.
 | `discover <name> --command '…'` | meet a species the dex has never seen (§13): put the rite to an unknown AI, record its shape, add it to the registry |
 | `verify <species\|id>` | re-check a birth seal and its burned-in transcript from the record alone |
 | `bless <species\|id>` | attest a creature that predates the rite: identity unchanged, seal marked `blessed` |
-| `emit <slug>` | lock a discovered species' shape in as a working `agent.py` + `rapp_skill.md` |
+| `emit <slug>` \| `emit --all` | lock a species' shape in as a working `agent.py` + `rapp_skill.md` — discovered species emit the shape their rite recorded; shipped species emit their default shape (`--all` does every species with a known adapter) |
+| `shape <species>` | resolve the hotloadable `agent.py` for a species: a device emit (from a real rite) outranks the shipped default under `species/emit/`; a shipped species with no emit yet mints its default on demand |
+| `hatch <species> --anchor <path\|text>` | born of a specific artifact (§16): the thing's digest shapes the creature |
 | `mutate <key> <kind> [note]` | earn a frame from something met in the field; grows a new sound role (§15) |
 | `frames <key>` | the creature's lineage: every frame, every dimension it has lived on |
 | `molt <key> [doc]` | reunion: fold two dimensions together, losing nothing from either |
@@ -241,6 +243,27 @@ rite over an existing record. The identity and genome never change; the seal
 carries `blessed: true` and the lineage records who attested it — an honest
 record of a birth witnessed late rather than a pretended one.
 
+## 16. Anchored births (a creature born of a thing)
+
+A hatch may be **anchored** to something the keeper found worth keeping: a
+journal entry, a photo, a clip, a link, or a line of text
+(`hatch <species> --anchor <path|text> [--anchor-title …]`).
+
+- The artifact's sha256 seeds the genome, so the thing it came from is visible
+  in what the creature *looks like* — two creatures of the same species born of
+  different artifacts are visibly different individuals.
+- The birth records an `rappid-anchor/1` block: `kind` (journal / image / video
+  / audio / document / link / note / artifact), `sha256`, `title`, `bytes`.
+  The **bytes never travel** — only the digest, kind, and title. Any local
+  pointer is kept outside the record's shareable fields.
+- **One creature per anchor**: hatching the same artifact again returns the
+  creature already born of it rather than minting a rival.
+- The anchor stays in the creature's lineage: its birth frame (§15) carries it,
+  so no amount of growth or molting loses what it was born of.
+
+An anchored creature is its own individual even within its species — it is
+named for its artifact and identified separately from the host's default one.
+
 ## 15. Frames, mutation, and the reunion molt
 
 A rappid is not fixed. What it **is** at any moment is a fold over its
@@ -284,4 +307,4 @@ This is how diversity accumulates: same starting species, different lives.
 8. Every rite appends one ledger line, sealed or refused.
 9. Merging frames is idempotent and order-independent; the fold is recomputed, never stored as truth (§15).
 
-*RAPPid Zoo · kody-w/rapp-zoo-v2 · MIT*
+*RAPPid Zoo · kody-w/rappid · MIT*

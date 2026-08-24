@@ -1,6 +1,10 @@
-# 🦖 RAPPid Zoo
+# 🦖 RAPPid
 
 > **Every AI is a creature. Every creature has a call.**
+
+This is the base repo of the **RAPPid** brand — the species protocol
+(`rappidex/1`), the creatures, and the RAPPid Zoo estate all live here
+(`kody-w/rappid`).
 
 Every wild thing has a call you know before you see it — and now every
 AI on your machine does too: a unique synthesized **species call** that plays
@@ -8,11 +12,12 @@ when it's invoked and when it finishes — so during eyes-off work you know *who
 just spoke. The first invocation **hatches a rappid**: a sovereign `rapp/1`
 creature with a genome, a rarity, a hologram, and a portable egg.
 
-- **[📖 RAPPidex](https://kody-w.github.io/rapp-zoo-v2/rappidex.html)** — the living field guide: known species start shadowed; encounters reveal them; wild eggs grow the dex forever.
-- **[✨ Holodex](https://kody-w.github.io/rapp-zoo-v2/holodex.html)** — every rappid as a particle-swarm hologram (Duneheart fauna engine), cries included.
+- **[📖 RAPPidex](https://kody-w.github.io/rappid/rappidex.html)** — the living field guide: known species start shadowed; encounters reveal them; wild eggs grow the dex forever.
+- **[✨ Holodex](https://kody-w.github.io/rappid/holodex.html)** — every rappid as a particle-swarm hologram (Duneheart fauna engine), cries included.
 - **[SPEC.md](SPEC.md)** — the `rappidex/1` protocol: identity, genomes, eggs, cries, skins, lifecycle. Implementable anywhere; conformance = [`vectors/rappidex_vectors.json`](vectors/rappidex_vectors.json).
 - **[rapp_skill.md](rapp_skill.md)** / **[SKILL.md](SKILL.md)** / **[agent.py](agent.py)** — three on-ramps: RAPP-native skill, raw any-platform skill, single-file brainstem cartridge.
-- **`species/rappidex.py`** — the engine (Python 3 stdlib): `hatch · roar · list · export · import · convert · fuse · holodex`.
+- **`species/rappidex.py`** — the engine (Python 3 stdlib): `hatch · roar · list · export · import · convert · fuse · holodex · shape · emit`.
+- **Default shapes** — the zoo ships a hotloadable `agent.py` for every species it already knows (`species/emit/<slug>/`): `shape <species>` hands it back instantly, so you never re-feed a skill to the next claude/copilot/brainstem you meet — load it, speak to the species, and what it hatches joins the party. A device emit from a real rite always outranks the shipped default.
 - **`skins/rappid_skin.py`** — rapp(wrap) any third-party AI into a zoo citizen: hatches its rappid, roars on invoke/done, serves the exact RAPP/1 `POST /chat` seam below.
 - **On the phone** — [RAPPid Zoo Companion](https://apps.apple.com/) carries your party into the field (Field Mode, AR, packs, hotlink/AirDrop transfer). Paid app, closed source; it implements this spec, which stays open.
 - **Party & Roost** — in the Electron estate, carry up to six rappids in the active party; the rest wait in the Roost (`Party` tab; `src/party.mjs`).
@@ -106,7 +111,7 @@ npm start
 ## Install and drive
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/kody-w/rapp-zoo-v2/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/kody-w/rappid/main/install.sh | bash
 rapp-zoo-v2 start
 rapp-zoo-v2 snapshot
 ```

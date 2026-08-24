@@ -32,6 +32,10 @@ import subprocess
 import time
 
 RITE = "rappid-birth/1"
+# Species the zoo ships with; a discovered species is always allowed to stand in
+# for itself, so this list only guards the shipped ones.
+SPECIES_NAMES = {"brainstem", "claude", "copilot", "rappterbot", "openrappter",
+                 "opengrokbot", "openclaw", "hermes", "rapptwin", "rapplication"}
 ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 STEMS = ["EMBER", "HOLLOW", "QUARTZ", "TIDAL", "VESSEL", "MARROW", "LANTERN",
          "THICKET", "BASALT", "CINDER", "WILLOW", "FATHOM", "GRANITE", "SABLE"]
@@ -60,7 +64,9 @@ def derive_challenge(rappid_id: str, species: str) -> dict:
         f"You are attesting the birth of a {species} rappid. Break this cypher and answer in exactly two lines.\n\n"
         f"CYPHER: {woven}\n"
         f"Method: every SECOND letter is a decoy — discard them. Reverse what remains. "
-        f"Then shift each letter BACK by {shift} in the alphabet (A-Z, wrapping).\n\n"
+        f"Then shift each letter back through the alphabet (A-Z, wrapping) until it reads as "
+        f"an English word. Work out the shift yourself; it is between 2 and 24, and exactly "
+        f"one shift yields a real word.\n\n"
         f"Then compose a short MIDI motif for this creature's voice: 7 note numbers "
         f"between {lo} and {hi}, space separated, that would read as a distinctive call.\n\n"
         "Answer with these two lines and nothing else:\n"
@@ -106,12 +112,26 @@ def seal_of(challenge: dict, answer: dict) -> str:
     return hashlib.sha256(payload.encode()).hexdigest()
 
 
-def verify_seal(birth: dict) -> bool:
-    """Anyone can re-check a birth from the record alone."""
+def verify_seal(birth: dict, rappid_id: str = "", species: str = "") -> bool:
+    """Re-check a birth COLD: the challenge is re-derived from the creature's own
+    identity, so a hand-authored record cannot pass. Without the identity we can
+    only check internal consistency — which a forger controls — so that case is
+    refused outright rather than reported as verified."""
     try:
-        challenge = {"cypher": birth["cypher"]}
-        answer = {"decode": birth["decode"], "motif": birth["motif"]}
-        return seal_of(challenge, answer) == birth["seal"] and birth.get("decode_ok") is True
+        if not rappid_id or not species:
+            return False
+        expected = derive_challenge(rappid_id, species)
+        if birth.get("cypher") != expected["cypher"]:
+            return False                      # not this creature's cypher
+        if birth.get("decode") != expected["expected"]:
+            return False                      # not the true plaintext
+        lo, hi = expected["register"]
+        motif = birth.get("motif") or []
+        in_band = [n for n in motif if lo <= n <= hi]
+        if len(motif) < 5 or len(in_band) < max(4, len(motif) - 2):
+            return False                      # not a voice this species could sing
+        answer = {"decode": birth["decode"], "motif": motif}
+        return seal_of(expected, answer) == birth.get("seal") and birth.get("decode_ok") is True
     except (KeyError, TypeError):
         return False
 
@@ -174,9 +194,16 @@ def call_midwife(command: str, prompt: str, timeout: int = 180) -> tuple[str, in
 def attend_birth(rappid_id, species, hatchers, midwife=None, attempts=3, log=print):
     """Run the rite. Returns a sealed birth block, or None — and never invents one."""
     challenge = derive_challenge(rappid_id, species)
-    name = midwife or os.environ.get("RAPPID_MIDWIFE") or (species if species in hatchers else None) \
+    chosen = midwife or os.environ.get("RAPPID_MIDWIFE")
+    name = chosen or (species if species in hatchers else None) \
         or next((k for k, v in hatchers.items() if v.get("command") and v.get("default")), None) \
         or next((k for k, v in hatchers.items() if v.get("command")), None)
+    if name and name != species and not chosen and species in SPECIES_NAMES:
+        # a species must answer for its own birth; standing in is a deliberate act
+        log(f"✋ '{species}' has no midwife of its own here, and standing in is not automatic. "
+            f"Pass --midwife {name} if you mean for {name} to attest a {species} birth.")
+        return None, {"challenge_id": challenge["challenge_id"], "midwife": None,
+                      "outcome": "no-own-midwife", "species": species}
     entry = hatchers.get(name or "", {})
     command = entry.get("command")
     if not command:

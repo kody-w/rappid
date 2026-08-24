@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$Repository = if ($env:RAPP_ZOO_REPOSITORY) { $env:RAPP_ZOO_REPOSITORY } else { "kody-w/rapp-zoo-v2" }
+$Repository = if ($env:RAPP_ZOO_REPOSITORY) { $env:RAPP_ZOO_REPOSITORY } else { "kody-w/rappid" }
 $RequestedRef = if ($env:RAPP_ZOO_REF) { $env:RAPP_ZOO_REF } else { "main" }
 $InstallRoot = if ($env:RAPP_ZOO_INSTALL_ROOT) { $env:RAPP_ZOO_INSTALL_ROOT } else { Join-Path $env:LOCALAPPDATA "RAPP-Zoo-v2" }
 $BinDir = if ($env:RAPP_ZOO_BIN_DIR) { $env:RAPP_ZOO_BIN_DIR } else { Join-Path $env:LOCALAPPDATA "Microsoft\WindowsApps" }

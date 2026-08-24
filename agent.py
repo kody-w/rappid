@@ -10,7 +10,7 @@ the AI creatures on this machine from chat:
     Model: <RappidZoo(action="hatch", species="copilot")>
            <RappidZoo(action="fuse", a="copilot", b="claude")>
 
-Protocol: SPEC.md (rappidex/1) in kody-w/rapp-zoo-v2.
+Protocol: SPEC.md (rappidex/1) in kody-w/rappid.
 """
 from __future__ import annotations
 
@@ -60,7 +60,7 @@ def _load_engine():
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
             return mod
-    raise ImportError("rappidex.py not found — clone kody-w/rapp-zoo-v2 or set RAPPIDZOO_ENGINE")
+    raise ImportError("rappidex.py not found — clone kody-w/rappid or set RAPPIDZOO_ENGINE")
 
 
 class RappidZoo(BasicAgent):
@@ -74,7 +74,7 @@ class RappidZoo(BasicAgent):
                 "properties": {
                     "action": {"type": "string",
                                "enum": ["hatch", "roar", "list", "show", "export",
-                                        "import", "convert", "fuse", "holodex"],
+                                        "import", "convert", "fuse", "holodex", "shape"],
                                "description": "lifecycle verb (SPEC.md §7)"},
                     "species": {"type": "string", "description": "species name (hatch/roar) or target species (convert/fuse)"},
                     "key": {"type": "string", "description": "species|genome-id (show/export/convert)"},
@@ -114,8 +114,13 @@ class RappidZoo(BasicAgent):
                     rx.cmd_fuse(a, b, species or None)
                 elif action == "holodex":
                     rx.cmd_holodex(open_it=False)
+                elif action == "shape":
+                    # resolve the hotloadable agent.py for a species — drop it
+                    # into agents/ (or load it in place) and speak to that
+                    # species directly; no re-feeding, no rediscovery
+                    rx.cmd_shape(species or key)
                 else:
-                    return f"Unknown action '{action}'. Verbs: hatch roar list show export import convert fuse holodex."
+                    return f"Unknown action '{action}'. Verbs: hatch roar list show export import convert fuse holodex shape."
         except SystemExit as e:
             return f"RappidZoo refused: {e}"
         return buf.getvalue().strip() or "done"

@@ -26,6 +26,8 @@ python3 species/rappidex.py hatch <species> --midwife claude   # choose who atte
 python3 species/rappidex.py verify <species>    # re-check the seal + burned-in birthday
 python3 species/rappidex.py discover <name> --command '<how to call that AI>'  # meet a new species
 python3 species/rappidex.py emit <slug>         # its shape → a working agent.py + rapp_skill.md
+python3 species/rappidex.py emit --all          # every species with a known adapter (the shipped defaults)
+python3 species/rappidex.py shape <species>     # resolve the hotloadable agent.py — device emit beats shipped default
 python3 species/rappidex.py bless <species|id>  # attest a creature that predates the rite
 python3 species/rappidex.py roar <species>      # play the species call, individual accent
 python3 species/rappidex.py list                # the dex

@@ -41,7 +41,7 @@ and green. A check that cannot measure is a failure.
 | S2 | Offline completeness | After an approved summon is saved, chat fixtures, local Drill, reports, child lifecycle, restart, and semantic autopilot remain usable with all non-loopback network unavailable. |
 | M1 | Mutations | At minimum: remove UUID domain tag, permit extra wire key, permit mutable raw URL, bypass local Drill receipt, accept generic HTTP 200, bypass capability stop, or allow arbitrary autopilot JS; each mutant must be caught. |
 | I1 | Install | Fresh local installer creates commands, desktop app, isolated data root, MIT/license files, and no dependency on v1 state. |
-| I2 | Public smoke | Fresh clone from `kody-w/rapp-zoo-v2` installs and repeats the real autopilot acceptance flow without using the build workspace. |
+| I2 | Public smoke | Fresh clone from `kody-w/rappid` installs and repeats the real autopilot acceptance flow without using the build workspace. |
 
 ## Stop condition
 

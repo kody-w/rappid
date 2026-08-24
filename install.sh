@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPOSITORY="${RAPP_ZOO_REPOSITORY:-kody-w/rapp-zoo-v2}"
+REPOSITORY="${RAPP_ZOO_REPOSITORY:-kody-w/rappid}"
 REQUESTED_REF="${RAPP_ZOO_REF:-main}"
 INSTALL_ROOT="${RAPP_ZOO_INSTALL_ROOT:-$HOME/.local/share/rapp-zoo-v2}"
 BIN_DIR="${RAPP_ZOO_BIN_DIR:-$HOME/.local/bin}"

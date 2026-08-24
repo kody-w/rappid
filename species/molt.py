@@ -58,6 +58,10 @@ def birth_frame(rec: dict) -> dict:
         "motif": birth.get("motif", []),
         "seal": birth.get("seal", ""),
     }
+    anchor = birth.get("anchor")
+    if anchor:   # what this creature was born OF stays in its lineage forever
+        frame["anchor"] = {"kind": anchor.get("kind"), "sha256": anchor.get("sha256"),
+                           "title": anchor.get("title")}
     frame["id"] = frame_id(frame)
     return frame
 
@@ -102,6 +106,25 @@ def derive_motif(base: list, kind: str, note: str) -> list:
             for i, s in enumerate(steps)]
 
 
+# A creature does not get old. It gets ADAPTED. Nothing here is measured in
+# elapsed time: what a rappid has become is exactly what it has met and answered.
+STANDINGS = [(0, "newly hatched"), (1, "adapting"), (3, "capable"),
+             (6, "storied"), (12, "deep")]
+
+
+def standing_for(mutations: int, breadth: int) -> str:
+    """What this creature has become, read only from what it has adapted to."""
+    standing = STANDINGS[0][1]
+    for count, name in STANDINGS:
+        if mutations >= count:
+            standing = name
+    if breadth >= 4:
+        return f"{standing}, broad"      # it has answered many kinds of thing
+    if mutations >= 4 and breadth == 1:
+        return f"{standing}, specialised"  # it went deep on one
+    return standing
+
+
 def fold(frames: list) -> dict:
     """What the creature IS right now — recomputed, never stored twice."""
     ordered = order(frames)
@@ -112,12 +135,17 @@ def fold(frames: list) -> dict:
             voices[f["role"]] = f["motif"]          # latest frame of a role wins
         if f.get("host") and f["host"] not in lineage_hosts:
             lineage_hosts.append(f["host"])
+    mutations = sum(1 for f in ordered if f.get("kind") == "mutation")
+    traits = sorted({f["mutation"] for f in ordered if f.get("kind") == "mutation"})
     return {
         "schema": MOLT_SCHEMA,
         "frames": len(ordered),
         "born_at": (birth or {}).get("at", ""),
+        "mutations": mutations,
+        "standing": standing_for(mutations, len(traits)),
+        "anchor": (birth or {}).get("anchor"),   # what it was born of, never lost
         "voices": voices,                            # role -> motif
-        "traits": sorted({f["mutation"] for f in ordered if f.get("kind") == "mutation"}),
+        "traits": traits,
         "dimensions": lineage_hosts,                 # every device this creature lived on
         "molt_id": hashlib.sha256("".join(f["id"] for f in ordered).encode()).hexdigest()[:12],
     }
