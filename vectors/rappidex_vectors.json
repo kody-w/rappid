@@ -76,5 +76,22 @@
     "genome_id": "23d110a4def3",
     "rarity": "uncommon",
     "egg": "eyJnZW5vbWUiOnsibGF5ZXJzIjpbeyJyb2xlIjoiZm9ybSIsImsiOjQwLCJzaGFwZSI6ImJsb2IiLCJsaW1icyI6NCwic2VnbWVudHMiOjMsInN5bW1ldHJ5IjoicmFkaWFsIiwiYm9keV9yIjowLjUxNiwibGltYl9sZW4iOjAuNDQ2LCJjb2hlc2lvbiI6MC44NTZ9LHsicm9sZSI6InN1cmZhY2UiLCJrIjo2MCwicGFsZXR0ZSI6WyIjZjVlNmQwIiwiI2UwYjQ4YSIsIiM5YTZhNGEiLCIjZmZiODdhIl0sInBhdHRlcm4iOiJnbG93IiwiZ2xvdyI6MC42NzksIm9wYWNpdHkiOjAuOTY2LCJncmFpbiI6MSwic3BhcmtsZSI6MC4zMzV9LHsicm9sZSI6Im1vdGlvbiIsImsiOjUwLCJicmVhdGhlIjowLjgzOSwiZHJpZnQiOjAuNTM5LCJwdWxzZSI6MC40NDksInJlYWNoIjowLjc2NCwiZGlzc29sdmUiOjAuNDE1fV0sImNvbXBvc2UiOnsid2luZG93cyI6W1swLDEsMl1dLCJsb29wIjp0cnVlfSwic3BlY2llcyI6ImNsYXVkZSJ9LCJpZCI6IjIzZDExMGE0ZGVmMyIsImJvcm4iOnsiY29vcmQiOiJkemh5ODgiLCJ0IjowfSwidGl0bGUiOiJDbGF1ZGUgQ29kZSIsInJhcml0eSI6InVuY29tbW9uIiwic291cmNlIjoicmFwcGlkZXgifQ"
+  },
+  "chant": {
+    "vocabulary_sha256": "325f47d38851721f16cf111f80114d8d9146e84813fa6822fe2ad38dd18dbb36",
+    "vectors": [
+      {
+        "rappid": "rappid:@rappid/claude:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "chant": "cairn-dusk-fathom-beacon-hearth-prairie-prairie"
+      },
+      {
+        "rappid": "rappid:@rappid/copilot:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "chant": "pine-inkcap-xylem-ursa-granite-wren-zeal"
+      },
+      {
+        "rappid": "rappid:@duneheart/wild:910428a1e7dff2a0e4a750cd064d9944b93fec106247f5a95b929bdfeb7048d1",
+        "chant": "mire-dusk-fenlark-nettle-flint-mire-umber"
+      }
+    ]
   }
 }

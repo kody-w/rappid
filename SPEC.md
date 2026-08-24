@@ -197,10 +197,17 @@ frames: the federation carries rapp/1 documents, it does not define new ones.
 
 **The seven-word summon.** A creature's chant is seven words drawn from
 `sha256(rappid)` over the normative 128-word vocabulary (`CHANT_WORDS` in the
-reference engine — fixed order, append-only): word *i* = `WORDS[digest[i] mod
-128]`, `i ∈ 0..6`, joined by `-`. Deterministic and permanent: the same seven
-words summon the same creature from ANY client, forever. A spoken chant
-(spaces, any case) MUST normalize to the hyphenated lowercase form.
+reference engine — fixed order, **frozen at exactly 128 words**; the indexing
+is `mod 128`, so the vocabulary can never grow without breaking every chant):
+word *i* = `WORDS[digest[i] mod 128]`, `i ∈ 0..6`, joined by `-`.
+Deterministic and permanent: the same seven words summon the same creature
+from ANY client, forever. A spoken chant (spaces, any case) MUST normalize to
+the hyphenated lowercase form. The vocabulary and derivation are pinned by
+the conformance vectors (`vectors/rappidex_vectors.json`, `chant`): a client
+that cannot reproduce them byte-exactly is not a rappidverse client. A chant
+is a 49-bit address, not a proof of identity — which is why a door must
+*answer* to its chant (below) and why a caller who knows the full rappid
+SHOULD compare it against the summoned door's.
 
 **Federation.** A client keeps a local peer list (`federation.json`) and MAY
 `sync`: fetch each peer's `index.json`, then walk `peers.json` transitively
@@ -229,6 +236,31 @@ its egg, reassembles the creature under its ORIGINAL rappid (a summoned
 creature keeps its identity — never re-minted), and merges the door's public
 frames with whatever frames this device already holds (§15 molt semantics).
 
+**A door is trusted for what it proves, never what it claims.** The byte pin
+only proves a door matches its own repo's index. Before assembling, a summon
+MUST also verify — and refuse on any failure:
+
+1. **Identity shape** — the door's `rappid` is a well-formed §3 identity.
+2. **The chant binding** — a door resolved BY CHANT must answer to it:
+   `chant_for(door.rappid)` MUST equal the chant summoned. The seven words
+   are the creature's own hash; no repo may park a different creature under
+   them.
+3. **The egg binding** — the egg's genome MUST hash (§4 genome id) to the
+   door's claimed `genome_id`. The creature that assembles is the creature
+   that was published.
+4. **The cold seal** — the door's `birth` MUST verify against the rappid
+   itself (§12: the challenge re-derives from the identity, so a fabricated
+   birth cannot pass). Only rite-sealed creatures walk the rappidverse; the
+   public birth therefore carries `decode_ok` alongside the seal fields.
+5. **Size** — a door larger than 1 MiB, or an index/peers response beyond the
+   federation cap, is refused before parsing.
+
+**The local copy of an identity is found by the identity.** A summon lays the
+door over an existing local record ONLY when the rappids are equal. The same
+genome under a different rappid is a different creature (imports and converts
+mint fresh identities over shared genomes); its frames land in their own
+record and MUST NOT fold into another's.
+
 **A zoo is a rapp neighborhood.** The local roster a summon assembles into is
 not a new construct: a zoo serves the rapp/1 wire seam (§8 — `POST /chat`,
 exact success and refusal envelopes), so an estate attaches a zoo exactly as
@@ -240,6 +272,14 @@ GODD saves, sealed vault, local anchors' bytes, transcripts — never enters a
 DOGG repo; a summoned DOGG composes with the *local* device's GODD layer on
 arrival. One creature, two faces: the DOGG is what the world can call; the
 GODD is what only its keeper holds.
+
+**And so do the machines.** Device hostnames are internal identifiers: public
+frames carry no `host`, and `life.dimensions` is a COUNT of the dimensions a
+creature lived in, never their names. A public frame keeps its original
+content-hash `id`, so the reunion molt still recognizes it as the same frame
+— and when a projection meets the richer local frame it projects, the local
+frame wins (§15: same id IS the same frame; the projection never replaces
+what the keeper holds).
 
 ## 12. The Rite of Hatching (an LLM must attest a birth)
 

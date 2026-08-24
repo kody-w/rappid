@@ -1297,6 +1297,11 @@ def cmd_bless(key, midwife=None, attempts=3):
 # private layer the summoner holds is laid over it afterwards. Two faces, one
 # creature — and the private one never travels.
 DOGG_SCHEMA = "rappid-frontdoor/1"
+# The §3 identity shape a door must carry, and the most bytes any front door
+# may weigh — both refuse-at-the-boundary rules: whatever a peer serves, it is
+# checked before a single field is trusted.
+RAPPID_RE = re.compile(r"rappid:@[^\s:@/]+/[^\s:@/]+:[0-9a-f]{64}\Z")
+DOOR_MAX_BYTES = 1_048_576
 # The normative summon vocabulary (SPEC §11). 128 words, fixed order, append-only:
 # a chant is seven of these drawn from the creature's identity hash, so the
 # same seven words summon the same creature from ANY client in the federation.
@@ -1463,9 +1468,11 @@ def cmd_dogg_summon(chant, repo=None):
     """Say the chant anywhere: fetch the public face, then lay whatever private
     layer this device holds over the top."""
     source = chant
-    pin = None   # set when the federation index pins the door's bytes
+    pin = None      # set when the federation index pins the door's bytes
+    spoken = None   # set when the summon was BY CHANT — the door must answer to it
     if not chant.startswith("http"):
         chant = chant.strip().lower().replace(" ", "-")   # a spoken chant works too
+        spoken = chant
         local_path = os.path.join(DEX_HOME, "dogg", f"{chant}.json")
         if os.path.exists(local_path):
             source = local_path
@@ -1488,10 +1495,12 @@ def cmd_dogg_summon(chant, repo=None):
         if source.startswith("http"):
             import urllib.request
             with urllib.request.urlopen(source, timeout=30) as r:
-                raw_bytes = r.read()
+                raw_bytes = r.read(DOOR_MAX_BYTES + 1)
         else:
             with open(source, "rb") as f:
-                raw_bytes = f.read()
+                raw_bytes = f.read(DOOR_MAX_BYTES + 1)
+        if len(raw_bytes) > DOOR_MAX_BYTES:
+            sys.exit("that door is larger than any front door can be — refused")
         # rapp/1 trust doctrine: a federation-resolved door is loaded ONLY if
         # its bytes match the index pin — a mismatch (torn publish, tamper,
         # stale cache) fails closed; re-sync and chant again.
@@ -1505,15 +1514,39 @@ def cmd_dogg_summon(chant, repo=None):
         sys.exit(f"the chant found nothing: {e}")
     if door.get("schema") != DOGG_SCHEMA:
         sys.exit("that is not a rappid front door")
+    # A door is trusted for WHAT IT PROVES, not what it claims (SPEC §11). The
+    # byte pin only proves the door matches its own repo's index — these checks
+    # bind the door to the identity being summoned:
+    rid = str(door.get("rappid") or "")
+    if not RAPPID_RE.fullmatch(rid):
+        sys.exit("that door carries no rapp/1 rappid (§3) — refused")
+    #  1. the chant is the identity's own hash — a door summoned by chant must
+    #     answer to it, or any repo could park a stranger under these words
+    if spoken and chant_for({"rappid": rid}) != spoken:
+        sys.exit("that door does not answer to this chant — the seven words are "
+                 "the creature's own hash, and this creature's are different. Refused")
     egg = door.get("egg")
     if not egg:
         sys.exit("that front door carries no egg — nothing to summon")
     payload = unpack_egg(egg)
     genome = payload["genome"]
+    #  2. the egg must hash to the genome the door claims (§5) — the creature
+    #     that assembles is the creature that was published
+    gid = genome_id(genome)
+    if door.get("genome_id") != gid or payload.get("id") not in (None, gid):
+        sys.exit("the door's egg does not hash to its claimed genome — refused")
+    #  3. the birth seal must verify COLD against the rappid itself (§12) — a
+    #     fabricated birth cannot pass, because the challenge re-derives from
+    #     the identity the forger had to claim
+    if not rite.verify_seal(door.get("birth") or {}, rid, str(door.get("species") or "wild")):
+        sys.exit("the door's birth seal does not verify against its rappid — "
+                 "only rite-sealed creatures walk the rappidverse. Refused")
     species = genome.get("species") if genome.get("species") in SPECIES else "wild"
-    gid = safe_gid(payload.get("id") or genome_id(genome))
-    existing = next((r for r in all_records() if r.get("genome_id") == gid), None)
-    dirname = f"{safe_slug(species)}-summoned-{gid}"
+    # the local copy of an identity is found by the identity — never by genome
+    # alone: the same genome under another rappid is another creature, and its
+    # frames must not fold into this one's
+    existing = next((r for r in all_records() if r.get("rappid") == rid), None)
+    dirname = f"{safe_slug(species)}-summoned-{rid.rsplit(':', 1)[1][:12]}"
     if existing:
         rec = existing
         print(f"🔮  {rec['display_name']} already stands here — laying the public face over it")
@@ -1657,10 +1690,15 @@ def cmd_dogg_unfollow(owner):
 def _raw_url(repo, path):
     return f"https://raw.githubusercontent.com/{repo}/main/rappidverse/{path}"
 
-def _fetch_json(url, timeout=20):
+def _fetch_json(url, timeout=20, cap=DOOR_MAX_BYTES * 8):
+    """Every byte a peer serves is untrusted until parsed under a cap — an
+    index the size of a hard drive is an attack, not a federation."""
     import urllib.request
     with urllib.request.urlopen(url, timeout=timeout) as r:
-        return json.load(r)
+        raw = r.read(cap + 1)
+    if len(raw) > cap:
+        raise ValueError("response exceeds the federation size cap")
+    return json.loads(raw)
 
 def cmd_dogg_federate(repo):
     """Join a DOGG repo to this device's federation."""

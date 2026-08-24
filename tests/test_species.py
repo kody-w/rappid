@@ -58,6 +58,12 @@ ok("genome id vector", rx.genome_id(g) == v["genome"]["genome_id"])
 egg, gid, _ = rx.pack_egg(g, "Claude Code", rx.rarity_for(g))
 ok("rarity vector", rx.rarity_for(g) == v["genome"]["rarity"])
 ok("egg vector", egg == v["genome"]["egg"])
+ok("chant vocabulary pinned byte-exactly (SPEC §11: frozen at 128)",
+   hashlib.sha256("\n".join(rx.CHANT_WORDS).encode()).hexdigest()
+   == v["chant"]["vocabulary_sha256"])
+for cv in v["chant"]["vectors"]:
+    ok(f"chant vector {cv['chant']}",
+       rx.chant_for({"rappid": cv["rappid"]}) == cv["chant"])
 
 # ── 2. lifecycle ──
 rec, born = rx.cmd_hatch("claude", quiet=True)
@@ -439,5 +445,102 @@ rx._fetch_json = _real_fetch_json
 rx.cmd_dogg_unfollow("keeper")
 ok("an unfollow is persisted and peers survive it",
    rx._federation_follows() == [] and rx._federation_peers() == ["kody-w/rappterverse"])
+
+# ── a door is trusted for what it proves, never what it claims (SPEC §11) ──
+def refused(fn):
+    try:
+        fn()
+        return False
+    except SystemExit:
+        return True
+
+door_path = os.path.join(rx.DEX_HOME, "dogg", f"{chant}.json")
+ok("public frames carry no device hostname",
+   door["frames"] and all("host" not in f for f in door["frames"]))
+ok("public dimensions are a count, never machine names",
+   isinstance(door["life"]["dimensions"], int))
+ok("the public birth verifies COLD from the door alone",
+   rite.verify_seal(door["birth"], door["rappid"], door["species"]))
+
+# 1. a door must answer to the chant that summons it
+other_chant = rx.chant_for({"rappid": "rappid:@test/other:" + "b" * 64})
+with open(os.path.join(rx.DEX_HOME, "dogg", f"{other_chant}.json"), "w") as f:
+    json.dump(door, f)
+ok("a door parked under a stranger's chant is refused",
+   refused(lambda: rx.cmd_dogg_summon(other_chant)))
+os.remove(os.path.join(rx.DEX_HOME, "dogg", f"{other_chant}.json"))
+
+# 2/3/4. malformed identity, torn egg, forged birth — each refused at the door
+def _tampered(**kw):
+    with open(door_path, "w") as f:
+        json.dump(dict(door, **kw), f)
+    return refused(lambda: rx.cmd_dogg_summon(chant))
+ok("a door without a well-formed rappid is refused", _tampered(rappid="not-a-rappid"))
+ok("an egg that does not hash to the claimed genome is refused",
+   _tampered(genome_id="0" * 12))
+ok("a door with no birth is refused", _tampered(birth={}))
+ok("a forged birth seal is refused",
+   _tampered(birth=dict(door["birth"], decode="wrong")))
+with open(door_path, "w") as f:
+    json.dump(door, f)                      # restore the honest door
+
+# 5. an oversized door is refused before parsing
+with open(door_path + ".huge", "w") as f:
+    f.write("[" + " " * rx.DOOR_MAX_BYTES + "]")
+os.replace(door_path + ".huge", door_path)
+ok("a door beyond the size cap is refused",
+   refused(lambda: rx.cmd_dogg_summon(chant)))
+with open(door_path, "w") as f:
+    json.dump(door, f)
+
+# the pin fails closed: the federation cache pins bytes the served door must match
+os.remove(door_path)                        # force the federation path
+with open(rx.RAPPIDVERSE_CACHE, "w") as f:
+    json.dump({"schema": "rappid-rappidverse-cache/1",
+               "doors": {chant: {"chant": chant, "repo": "kody-w/rappterverse",
+                                 "door_sha256": "f" * 64}}}, f)
+door_bytes = json.dumps(door).encode()
+class _Served:
+    def __init__(self, data): self.data = data
+    def read(self, n=-1): return self.data if n in (-1, None) else self.data[:n]
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+_real_urlopen = urllib.request.urlopen
+urllib.request.urlopen = lambda url, timeout=30: _Served(door_bytes)
+ok("a federation door whose bytes miss the pin FAILS CLOSED",
+   refused(lambda: rx.cmd_dogg_summon(chant)))
+with open(rx.RAPPIDVERSE_CACHE, "w") as f:
+    json.dump({"schema": "rappid-rappidverse-cache/1",
+               "doors": {chant: {"chant": chant, "repo": "kody-w/rappterverse",
+                                 "door_sha256": hashlib.sha256(door_bytes).hexdigest()}}}, f)
+ok("the same door under the true pin assembles",
+   rx.cmd_dogg_summon(chant)["rappid"] == dogg_rec["rappid"])
+urllib.request.urlopen = _real_urlopen
+with open(door_path, "w") as f:
+    json.dump(door, f)
+
+# the local copy of an identity is found by the identity — never by genome alone
+rid2 = "rappid:@test/impostor:" + "c" * 64
+ch2 = rite.derive_challenge(rid2, door["species"])
+lo, hi = ch2["register"]
+motif2 = [lo, lo + 2, lo + 4, lo + 5, lo + 7, lo + 4, lo]
+birth2 = {"rite": ch2["rite"], "challenge_id": ch2["challenge_id"],
+          "cypher": ch2["cypher"], "decode": ch2["expected"], "decode_ok": True,
+          "motif": motif2,
+          "seal": rite.seal_of(ch2, {"decode": ch2["expected"], "motif": motif2})}
+door2 = dict(door, rappid=rid2, chant=rx.chant_for({"rappid": rid2}), birth=birth2)
+with open(os.path.join(rx.DEX_HOME, "dogg", f"{door2['chant']}.json"), "w") as f:
+    json.dump(door2, f)
+summoned2 = rx.cmd_dogg_summon(door2["chant"])
+ok("the same genome under another rappid lands as its OWN creature",
+   summoned2["rappid"] == rid2 and summoned2["rappid"] != dogg_rec["rappid"])
+ok("…and the original record is untouched by the stranger's frames",
+   rx.find_record(dogg_rec["rappid"])["rappid"] == dogg_rec["rappid"])
+
+# a projection never replaces the richer local frame it projects (§15)
+back = rx.cmd_dogg_summon(chant)            # claude's own door over its real record
+back_frames = molting.read_frames(rx._record_dir_of(back), back)
+ok("summoning your own creature keeps your local frames' hosts",
+   any(f.get("host") for f in back_frames))
 
 print(f"\nSPECIES TESTS: {PASS}/{PASS} PASS")

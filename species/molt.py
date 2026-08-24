@@ -157,7 +157,12 @@ def order(frames: list) -> list:
     unique = {}
     for f in frames:
         fid = f.get("id") or frame_id(f)
-        unique[fid] = dict(f, id=fid)
+        # Identity is the content hash, so same-id frames ARE the same frame —
+        # but a public projection (a front door) carries the original id over
+        # stripped content. First occurrence wins so the richer local frame is
+        # never replaced by its own projection: merge(local, incoming) keeps
+        # what this device holds.
+        unique.setdefault(fid, dict(f, id=fid))
     # birth first, then by (timestamp, id) so ties never depend on arrival order
     return sorted(unique.values(),
                   key=lambda f: (0 if f.get("kind") == "birth" else 1, f.get("at", ""), f["id"]))

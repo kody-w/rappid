@@ -13,6 +13,7 @@
     "challenge_id": "c4844359d0de",
     "cypher": "ULWOPOBKIKNC",
     "decode": "FATHOM",
+    "decode_ok": true,
     "motif": [
       36,
       31,
@@ -43,7 +44,6 @@
       "schema": "rappid-frame/1",
       "kind": "birth",
       "at": "2026-08-24T21:26:51Z",
-      "host": "kodys-macbook-pro",
       "motif": [
         36,
         31,
@@ -64,9 +64,6 @@
   "life": {
     "standing": "newly hatched",
     "traits": [],
-    "dimensions": [
-      "kodys-macbook-pro"
-    ],
     "molt_id": "1406024ac4e2",
     "frames": 1,
     "mutations": 0,
@@ -74,8 +71,9 @@
       "kind": "note",
       "sha256": "d3d9254271e481604a87d8551b6949c32dc68d4867362c7ae44383bc35b7fd1a",
       "title": "BookFactory"
-    }
+    },
+    "dimensions": 1
   },
-  "published_at": "2026-08-24T21:41:33Z",
+  "published_at": "2026-08-24T23:04:08Z",
   "published_by": "local"
 }

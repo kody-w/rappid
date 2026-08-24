@@ -123,6 +123,40 @@ const mutants = [
     runner: "python",
     test: "tests/test_species.py",
   },
+  // SPEC §11 hardening: a summoned door is trusted for what it PROVES. Each
+  // mutant drops one proof; the species suite must refuse the door anyway.
+  {
+    name: "summon-pin-bypass",
+    file: "species/rappidex.py",
+    from: "if pin and hashlib.sha256(raw_bytes).hexdigest() != pin:",
+    to: "if False:",
+    runner: "python",
+    test: "tests/test_species.py",
+  },
+  {
+    name: "summon-chant-unbound",
+    file: "species/rappidex.py",
+    from: 'if spoken and chant_for({"rappid": rid}) != spoken:',
+    to: "if False:",
+    runner: "python",
+    test: "tests/test_species.py",
+  },
+  {
+    name: "summon-torn-egg",
+    file: "species/rappidex.py",
+    from: 'if door.get("genome_id") != gid or payload.get("id") not in (None, gid):',
+    to: "if False:",
+    runner: "python",
+    test: "tests/test_species.py",
+  },
+  {
+    name: "summon-unverified-birth",
+    file: "species/rappidex.py",
+    from: 'if not rite.verify_seal(door.get("birth") or {}, rid, str(door.get("species") or "wild")):',
+    to: "if False:",
+    runner: "python",
+    test: "tests/test_species.py",
+  },
 ];
 
 const results = [];
