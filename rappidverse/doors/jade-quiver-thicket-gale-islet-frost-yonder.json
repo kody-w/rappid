@@ -1,0 +1,81 @@
+{
+  "schema": "rappid-frontdoor/1",
+  "chant": "jade-quiver-thicket-gale-islet-frost-yonder",
+  "rappid": "rappid:@kody-w/brainstem-bookfactory:e5c729c73351c0bb06059d20cc8da0ad311fa295cc9ccf5723503706c61e4e60",
+  "species": "brainstem",
+  "genus": "Truncus",
+  "display_name": "Brainstem of \u201cBookFactory\u201d",
+  "rarity": "uncommon",
+  "genome_id": "4bcc3c240bd0",
+  "egg": "eyJnZW5vbWUiOnsibGF5ZXJzIjpbeyJyb2xlIjoiZm9ybSIsImsiOjQwLCJzaGFwZSI6ImJsb2IiLCJsaW1icyI6MSwic2VnbWVudHMiOjcsInN5bW1ldHJ5IjoicmFkaWFsIiwiYm9keV9yIjowLjQ3MywibGltYl9sZW4iOjAuNTI2LCJjb2hlc2lvbiI6MC42MTN9LHsicm9sZSI6InN1cmZhY2UiLCJrIjo1NywicGFsZXR0ZSI6WyIjOWJlOGYyIiwiIzRlYTdkNSIsIiMyMjUwOGEiLCIjM2NkNmZmIl0sInBhdHRlcm4iOiJnbG93IiwiZ2xvdyI6MC43NjgsIm9wYWNpdHkiOjAuODYxLCJncmFpbiI6Miwic3BhcmtsZSI6MC44NTZ9LHsicm9sZSI6Im1vdGlvbiIsImsiOjUwLCJicmVhdGhlIjowLjQwMSwiZHJpZnQiOjAuNTIyLCJwdWxzZSI6MC43NTcsInJlYWNoIjowLjYwNCwiZGlzc29sdmUiOjAuNDExfV0sImNvbXBvc2UiOnsid2luZG93cyI6W1swLDEsMl1dLCJsb29wIjp0cnVlfSwic3BlY2llcyI6ImJyYWluc3RlbSJ9LCJpZCI6IjRiY2MzYzI0MGJkMCIsImJvcm4iOnsiY29vcmQiOiJ4eHFlbjUiLCJ0IjowfSwidGl0bGUiOiJCcmFpbnN0ZW0iLCJyYXJpdHkiOiJ1bmNvbW1vbiIsInNvdXJjZSI6InJhcHBpZGV4In0",
+  "birth": {
+    "rite": "rappid-birth/1",
+    "challenge_id": "c4844359d0de",
+    "cypher": "ULWOPOBKIKNC",
+    "decode": "FATHOM",
+    "motif": [
+      36,
+      31,
+      43,
+      29,
+      38,
+      26,
+      33
+    ],
+    "seal": "636df0ade9a2b17a04949038363f487b247aa87b95acbc21f667452a49686946",
+    "attested_at": "2026-08-24T21:26:51Z",
+    "midwife": {
+      "name": "brainstem",
+      "shape": "http"
+    },
+    "anchor": {
+      "kind": "note",
+      "title": "BookFactory",
+      "sha256": "d3d9254271e481604a87d8551b6949c32dc68d4867362c7ae44383bc35b7fd1a"
+    },
+    "transcript": {
+      "sha256": "f74bc8e7f6998db17073a2700a4a16e411a4a6246e97aca33ba057c43d854e1a",
+      "turns": 1
+    }
+  },
+  "frames": [
+    {
+      "schema": "rappid-frame/1",
+      "kind": "birth",
+      "at": "2026-08-24T21:26:51Z",
+      "host": "kodys-macbook-pro",
+      "motif": [
+        36,
+        31,
+        43,
+        29,
+        38,
+        26,
+        33
+      ],
+      "id": "3098be1c97f3ef99",
+      "anchor": {
+        "kind": "note",
+        "title": "BookFactory",
+        "sha256": "d3d9254271e481604a87d8551b6949c32dc68d4867362c7ae44383bc35b7fd1a"
+      }
+    }
+  ],
+  "life": {
+    "standing": "newly hatched",
+    "traits": [],
+    "dimensions": [
+      "kodys-macbook-pro"
+    ],
+    "molt_id": "1406024ac4e2",
+    "frames": 1,
+    "mutations": 0,
+    "anchor": {
+      "kind": "note",
+      "sha256": "d3d9254271e481604a87d8551b6949c32dc68d4867362c7ae44383bc35b7fd1a",
+      "title": "BookFactory"
+    }
+  },
+  "published_at": "2026-08-24T21:41:33Z",
+  "published_by": "local"
+}

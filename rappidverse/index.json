@@ -1,0 +1,15 @@
+{
+  "schema": "rappid-rappidverse/1",
+  "doors": {
+    "jade-quiver-thicket-gale-islet-frost-yonder": {
+      "chant": "jade-quiver-thicket-gale-islet-frost-yonder",
+      "rappid": "rappid:@kody-w/brainstem-bookfactory:e5c729c73351c0bb06059d20cc8da0ad311fa295cc9ccf5723503706c61e4e60",
+      "species": "brainstem",
+      "display_name": "Brainstem of \u201cBookFactory\u201d",
+      "standing": "newly hatched",
+      "published_at": "2026-08-24T21:41:33Z",
+      "door_sha256": "b7788c11a5c81f4d36c1a5038f1bfbbca40501c35957dcdc4b014e56f260d3b6",
+      "door_bytes": 2753
+    }
+  }
+}
