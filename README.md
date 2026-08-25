@@ -54,6 +54,22 @@ kernel and exposes an authenticated loopback UI driver, so an agent can
 autopilot the same visible controls a person would click. Frontier's code is
 never vendored into this repository — it is launched by reference.
 
+The rappid flavor of the Frontier brainstem (the fork's `feat/rappid-first-ui`
+branch) has one mode besides chat: **ambient mode**, built on voice mode. The
+mic button opens at the full sensory ceiling — continuous voice conversation,
+spoken replies, and a live frame of your screen and webcam riding every
+message — and the voice panel's ambient-senses checkboxes only downgrade;
+every start resets to all-on. Chat exports there are **`.tile`** files:
+`rapp-tile/1` wrapping one `rappid-frame/1` chat-turn frame per turn, frame
+ids byte-compatible with this repo's `molt.py` fold, so tiles union like
+frames. The rappid flavor stays on the fork — upstream is never touched.
+
+To start an estate of your own, use **the grail Electron template**
+([`kody-w/rapp-brainstem-frontier-template`](https://github.com/kody-w/rapp-brainstem-frontier-template)):
+one pull brings the grail Brainstem, the Frontier shell, and a **rapplication
+skin** — your UI overlaid on the factory grail chat, revertible by deletion,
+so a broken skin can never take the chat down with it.
+
 ## RAPP Zoo v2 (the in-repo reference estate)
 
 RAPP Zoo v2 remains in this repo (`src/`, `ui/`) as the reference
