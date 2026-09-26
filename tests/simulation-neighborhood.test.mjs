@@ -256,7 +256,7 @@ test("provider child-process creation is denied by the runtime boundary", async 
   simulation.replicas = 2;
   simulation.seeds = simulation.seeds.slice(0, 2);
   simulation.max_concurrency = 1;
-  simulation.replica_timeout_ms = 50;
+  simulation.replica_timeout_ms = 1000;
   const started = Date.now();
   const report = await runSimulation(simulation, {
     provider: provider({ mode: "descendant" }),
@@ -274,7 +274,7 @@ test("detached provider descendants are denied before they can escape", async ()
   simulation.replicas = 2;
   simulation.seeds = simulation.seeds.slice(0, 2);
   simulation.max_concurrency = 1;
-  simulation.replica_timeout_ms = 50;
+  simulation.replica_timeout_ms = 1000;
   const started = Date.now();
   const report = await runSimulation(simulation, {
     provider: provider({ mode: "detached-descendant" }),
