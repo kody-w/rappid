@@ -1,5 +1,9 @@
 # 🦖 RAPPid
 
+<!-- rapp1:network-header:start -->
+[![RAPP/1](https://kody-w.github.io/rapp-hive-public/portfolio/badges/rappid.svg)](https://github.com/kody-w/rapp-hive-public/blob/main/portfolio/repos/rappid.md) · **New to RAPP?** [Start here: get your Brainstem →](https://github.com/kody-w/rapp-installer#start-here)
+<!-- rapp1:network-header:end -->
+
 > **Every AI is a creature. Every creature has a call.**
 
 This is the base repo of the **RAPPid** brand — the species protocol
