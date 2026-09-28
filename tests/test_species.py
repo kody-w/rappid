@@ -589,4 +589,30 @@ ok("a summon that demands the true rappid assembles",
 ok("a summon that demands any other rappid is refused",
    refused(lambda: rx.cmd_dogg_summon(chant, rappid="rappid:@test/other:" + "b" * 64)))
 
+# ── rapp/1 rev-17 §6.1/§6.2: the keyless mint is Hb("rapp/1:rappid", UUIDv4 octets) ──
+import uuid as _uuid  # noqa: E402
+_real_uuid4 = _uuid.uuid4
+_uuid.uuid4 = lambda: _uuid.UUID("00000000-0000-4000-8000-000000000000")
+try:
+    ok("keyless mint tail is the tagged Hb of the UUIDv4 octets",
+       rx.mint_rappid("test", "claude-host") == "rappid:@test/claude-host:"
+       "84d40a838d3ea28287f0dd4df33524d8f9ac71e385391c979c4cbe02a58a8609")
+    _uuid.uuid4 = lambda: _uuid.UUID("00000000-0000-0000-0000-000000000000")
+    try:
+        rx.mint_rappid("test", "claude-host")
+        ok("a non-UUIDv4 mint is refused", False)
+    except ValueError:
+        ok("a non-UUIDv4 mint is refused", True)
+finally:
+    _uuid.uuid4 = _real_uuid4
+for bad_owner, bad_slug in (("Kody-W", "twin"), ("kody", "a--b"), ("x" * 40, "twin"), ("kody", "")):
+    try:
+        rx.mint_rappid(bad_owner, bad_slug)
+        ok(f"mint refuses {bad_owner[:8]!r}/{bad_slug!r}", False)
+    except ValueError:
+        ok(f"mint refuses {bad_owner[:8]!r}/{bad_slug!r}", True)
+ok("new identity labels are emitted in the §6.1 grammar",
+   rx.id_label("Kody_W..Mac--Mini", 39, "local") == "kody-w-mac-mini"
+   and rx.id_label("---", 39, "local") == "local")
+
 print(f"\nSPECIES TESTS: {PASS}/{PASS} PASS")

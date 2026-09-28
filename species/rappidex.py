@@ -11,7 +11,7 @@ Taxonomy
              First invocation of an AI on this machine hatches its rappid.
 
 Every rappid is rapp/1 compliant (ESTATE_SPEC §1 Eternity identity):
-  rappid:@<owner>/<slug>:<64hex>     hash = sha256 of a fresh UUID (keyless),
+  rappid:@<owner>/<slug>:<64hex>     hash = Hb("rapp/1:rappid", fresh UUIDv4) (keyless),
                                      never derived from the slug; re-hatch is
                                      idempotent because the stored record is reused.
 
@@ -391,16 +391,33 @@ def save_record(rec):
             f.write(egg)
     return d
 
+_LCLABEL = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
+
+def mint_rappid(owner_login, slug):
+    """rapp/1 §6.2 keyless mint: Hb("rapp/1:rappid", UUIDv4 octets). An owner or slug outside the
+    §6.1 grammar is refused, never repaired."""
+    if not (isinstance(owner_login, str) and 1 <= len(owner_login) <= 39 and _LCLABEL.match(owner_login)
+            and isinstance(slug, str) and 1 <= len(slug) <= 100 and _LCLABEL.match(slug)):
+        raise ValueError("rapp/1 §6.1: owner or slug violates the rappid grammar")
+    octets = uuid.uuid4().bytes
+    if octets[6] >> 4 != 4 or octets[8] >> 6 != 0b10:
+        raise ValueError("rapp/1 §6.2: keyless mint octets are not a UUIDv4")
+    return f"rappid:@{owner_login}/{slug}:" + hashlib.sha256(b"rapp/1:rappid\n" + octets).hexdigest()
+
+def id_label(text, limit, fallback):
+    """A new §6.1 label from a login, host or title: lowercase, one hyphen between runs."""
+    label = re.sub(r"[^a-z0-9]+", "-", str(text or "").lower())[:limit].strip("-")
+    return label or fallback
+
 def mint_record(species, genome, kind="creature", lineage=None, slug=None, dirname=None):
-    """rapp/1 Eternity identity: hash = sha256(fresh UUID), keyless, slug-independent."""
+    """rapp/1 Eternity identity: hash = Hb("rapp/1:rappid", fresh UUIDv4 octets), keyless, slug-independent."""
     sp = SPECIES[species]
     gid = genome_id(genome)
     egg, _, payload = pack_egg(genome, sp["name"], rarity_for(genome))
-    idhash = hashlib.sha256(uuid.uuid4().bytes).hexdigest()
     slug = slug or f"{species}-{hostslug()}"
     rec = {
         "schema": "rapp/1",
-        "rappid": f"rappid:@{owner()}/{slug}:{idhash}",
+        "rappid": mint_rappid(id_label(owner(), 39, "local"), id_label(slug, 100, species)),
         "kind": kind,
         "species": species,
         "genus": sp["genus"],
@@ -1325,7 +1342,8 @@ DOGG_SCHEMA = "rappid-frontdoor/1"
 # The §3 identity shape a door must carry, and the most bytes any front door
 # may weigh — both refuse-at-the-boundary rules: whatever a peer serves, it is
 # checked before a single field is trusted.
-RAPPID_RE = re.compile(r"rappid:@[^\s:@/]+/[^\s:@/]+:[0-9a-f]{64}\Z")
+RAPPID_RE = re.compile(r"rappid:@(?=[a-z0-9-]{1,39}/)[a-z0-9]+(?:-[a-z0-9]+)*/"
+                       r"(?=[a-z0-9-]{1,100}:)[a-z0-9]+(?:-[a-z0-9]+)*:[0-9a-f]{64}\Z")
 DOOR_MAX_BYTES = 1_048_576
 # The normative summon vocabulary (SPEC §11). 128 words, fixed order, append-only:
 # a chant is seven of these drawn from the creature's identity hash, so the
