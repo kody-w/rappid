@@ -137,3 +137,25 @@ test("the synchronous consumer accepts only exact success and refusal envelopes"
     /HTTP status 500/,
   );
 });
+
+test("rev-17: section 4 domain, section 5 tag table and RFC 8785 member order", async () => {
+  const { decodeUtf8 } = await import("../src/http.mjs");
+  assert.throws(() => parseIJson('["\\ufdd0"]'), /noncharacter/);
+  assert.throws(() => parseIJson('{"\\udbff\\udfff":0}'), /noncharacter/);
+  assert.throws(() => canonical({ value: "\uffff" }), /noncharacter/);
+  assert.equal(
+    canonical(parseIJson('{"9":2,"a":3,"10":1}')),
+    '{"10":1,"9":2,"a":3}',
+  );
+  const deepest = `${"[".repeat(64)}0${"]".repeat(64)}`;
+  assert.equal(canonical(parseIJson(deepest)), deepest);
+  assert.throws(() => parseIJson(`[${deepest}]`), /nesting/);
+  assert.equal(canonical(parseIJson("0e99999")), "0");
+  assert.throws(
+    () => parseIJson(decodeUtf8(Buffer.from("\ufeff{}", "utf8"))),
+    /token/,
+  );
+  assert.throws(() => H("rapp/1:egg", []), /section 5/);
+  assert.throws(() => Hb("rapp/1:particle", Buffer.alloc(0)), /section 5/);
+  assert.throws(() => Hb("rappid", Buffer.alloc(0)), /section 5/);
+});

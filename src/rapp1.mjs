@@ -8,14 +8,31 @@ export const RAPP1_SPEC_BYTES = 41_952;
 const OWNER = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const HASH = /^[0-9a-f]{64}$/;
 const STEP = new Set(["1", "1a", "2", "3", "4", "5", "6"]);
+const INTEGER_LIKE = /^(?:0|[1-9][0-9]*)$/;
 const MAX_CANONICAL_BYTES = 1024 * 1024;
+// A denial-of-service guard on raw input only; section 4 (d) bounds the canonical form.
+const MAX_JSON_INPUT_BYTES = 64 * 1024 * 1024;
 const MAX_JSON_DEPTH = 64;
+// Section 5 (rev-17 E-7): every tag belongs to exactly one of H and Hb.
+const H_SPACES = new Set([
+  "rapp/1:particle",
+  "rapp/1:wave",
+  "rapp/1:egg-manifest",
+  "rapp/1:sealed-aad",
+  "rapp/1:sealed-key-request",
+]);
+const HB_SPACES = new Set([
+  "rapp/1:egg",
+  "rapp/1:rappid",
+  "rapp/1:grail",
+  "rapp/1:seal",
+]);
 
 function assertString(value, label) {
   if (typeof value !== "string") {
     throw new TypeError(`${label} must be a string.`);
   }
-  assertNoLoneSurrogates(value, label);
+  assertIJsonCharacters(value, label);
   return value;
 }
 
@@ -27,17 +44,23 @@ function assertNewNfcString(value, label) {
   return value;
 }
 
-function assertNoLoneSurrogates(value, label) {
+function assertIJsonCharacters(value, label) {
   for (let index = 0; index < value.length; index += 1) {
-    const code = value.charCodeAt(index);
+    let code = value.charCodeAt(index);
     if (code >= 0xd800 && code <= 0xdbff) {
       const next = value.charCodeAt(index + 1);
       if (!(next >= 0xdc00 && next <= 0xdfff)) {
         throw new Error(`${label} contains an unpaired UTF-16 surrogate.`);
       }
+      code = 0x10000 + ((code - 0xd800) << 10) + (next - 0xdc00);
       index += 1;
     } else if (code >= 0xdc00 && code <= 0xdfff) {
       throw new Error(`${label} contains an unpaired UTF-16 surrogate.`);
+    }
+    // Section 4 (b), rev-17 E-3: the 66 Unicode noncharacters are outside I-JSON.
+    if ((code >= 0xfdd0 && code <= 0xfdef) || (code & 0xfffe) === 0xfffe) {
+      const hex = code.toString(16).toUpperCase().padStart(4, "0");
+      throw new Error(`${label} contains the Unicode noncharacter U+${hex}.`);
     }
   }
 }
@@ -55,12 +78,14 @@ function normalizedDecimal(source) {
   const exponentDigits = exponentText
     .replace(/^[+-]/, "")
     .replace(/^0+/, "") || "0";
-  if (exponentDigits.length > 4) {
+  let digits = `${whole}${fraction}`.replace(/^0+/, "");
+  if (!digits) return "0";
+  // Within the input guard, a nonzero token with a ten-digit exponent is never a
+  // finite nonzero binary64 value; shorter exponents stay exact as Numbers.
+  if (exponentDigits.length > 9) {
     throw new Error("JSON number exponent is outside the binary64 domain.");
   }
   let exponent = exponentSign * Number(exponentDigits) - fraction.length;
-  let digits = `${whole}${fraction}`.replace(/^0+/, "");
-  if (!digits) return "0";
   const trailing = /0+$/.exec(digits)?.[0].length || 0;
   if (trailing) {
     digits = digits.slice(0, -trailing);
@@ -76,8 +101,8 @@ function mathematicallyEqual(left, right) {
 class IJsonParser {
   constructor(source) {
     this.source = assertString(source, "JSON input");
-    if (Buffer.byteLength(this.source, "utf8") > MAX_CANONICAL_BYTES) {
-      throw new Error(`JSON input exceeds ${MAX_CANONICAL_BYTES} bytes.`);
+    if (Buffer.byteLength(this.source, "utf8") > MAX_JSON_INPUT_BYTES) {
+      throw new Error(`JSON input exceeds ${MAX_JSON_INPUT_BYTES} bytes.`);
     }
     this.offset = 0;
   }
@@ -100,11 +125,12 @@ class IJsonParser {
   }
 
   #value(depth) {
-    if (depth > MAX_JSON_DEPTH) {
-      throw new Error(`JSON nesting exceeds ${MAX_JSON_DEPTH}.`);
-    }
     this.#space();
     const token = this.source[this.offset];
+    // Section 4 (d): only objects and arrays add a nesting level.
+    if ((token === "{" || token === "[") && depth > MAX_JSON_DEPTH) {
+      throw new Error(`JSON nesting exceeds ${MAX_JSON_DEPTH}.`);
+    }
     if (token === "{") return this.#object(depth);
     if (token === "[") return this.#array(depth);
     if (token === "\"") return this.#string();
@@ -132,7 +158,7 @@ class IJsonParser {
       if (!escaped && code === 0x22) {
         this.offset += 1;
         const value = JSON.parse(this.source.slice(start, this.offset));
-        assertNoLoneSurrogates(value, "JSON string");
+        assertIJsonCharacters(value, "JSON string");
         return value;
       }
       if (!escaped && code < 0x20) {
@@ -235,21 +261,21 @@ export function parseIJson(source) {
   return new IJsonParser(source).parse();
 }
 
-function canonicalValue(value, depth = 1) {
-  if (depth > MAX_JSON_DEPTH) {
-    throw new Error(`JSON nesting exceeds ${MAX_JSON_DEPTH}.`);
-  }
+function canonicalValue(value, depth = 1, seen = {}) {
   if (value === null || typeof value === "boolean") return value;
   if (typeof value === "string") {
-    assertNoLoneSurrogates(value, "JSON string");
+    assertIJsonCharacters(value, "JSON string");
     return value;
   }
   if (typeof value === "number") {
     if (!Number.isFinite(value)) throw new Error("I-JSON numbers must be finite.");
     return Object.is(value, -0) ? 0 : value;
   }
+  if (depth > MAX_JSON_DEPTH) {
+    throw new Error(`JSON nesting exceeds ${MAX_JSON_DEPTH}.`);
+  }
   if (Array.isArray(value)) {
-    return value.map((entry) => canonicalValue(entry, depth + 1));
+    return value.map((entry) => canonicalValue(entry, depth + 1, seen));
   }
   if (
     typeof value !== "object"
@@ -259,26 +285,36 @@ function canonicalValue(value, depth = 1) {
   }
   const result = Object.create(null);
   for (const key of Object.keys(value).sort()) {
-    assertNoLoneSurrogates(key, "JSON member name");
-    result[key] = canonicalValue(value[key], depth + 1);
+    assertIJsonCharacters(key, "JSON member name");
+    if (INTEGER_LIKE.test(key)) seen.integerKey = true;
+    result[key] = canonicalValue(value[key], depth + 1, seen);
   }
   return result;
 }
 
+// JavaScript objects enumerate integer-like member names first; when one occurs,
+// the RFC 8785 order (UTF-16 code units) is applied while emitting.
+function serialize(value) {
+  if (Array.isArray(value)) return `[${value.map(serialize).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    const members = Object.keys(value).sort()
+      .map((key) => `${JSON.stringify(key)}:${serialize(value[key])}`);
+    return `{${members.join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
 export function canonical(value) {
-  const encoded = JSON.stringify(canonicalValue(value));
+  const seen = {};
+  const normalized = canonicalValue(value, 1, seen);
+  const encoded = seen.integerKey ? serialize(normalized) : JSON.stringify(normalized);
   if (Buffer.byteLength(encoded, "utf8") > MAX_CANONICAL_BYTES) {
     throw new Error(`Canonical JSON exceeds ${MAX_CANONICAL_BYTES} bytes.`);
   }
   return encoded;
 }
 
-export function Hb(space, bytes) {
-  assertString(space, "Hash space");
-  if (space.includes("\n") || !/^[\x20-\x7e]+$/.test(space)) {
-    throw new Error("Hash space must be an exact printable ASCII tag without LF.");
-  }
-  const body = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
+function taggedDigest(space, body) {
   return createHash("sha256")
     .update(space, "utf8")
     .update("\n", "utf8")
@@ -286,8 +322,18 @@ export function Hb(space, bytes) {
     .digest("hex");
 }
 
+export function Hb(space, bytes) {
+  if (typeof space !== "string" || !HB_SPACES.has(space)) {
+    throw new Error("Hb is used only with the section 5 octet tags.");
+  }
+  return taggedDigest(space, Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes));
+}
+
 export function H(space, value) {
-  return Hb(space, Buffer.from(canonical(value), "utf8"));
+  if (typeof space !== "string" || !H_SPACES.has(space)) {
+    throw new Error("H is used only with the section 5 value tags.");
+  }
+  return taggedDigest(space, Buffer.from(canonical(value), "utf8"));
 }
 
 export function validateRappid(value) {
