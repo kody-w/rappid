@@ -69,7 +69,7 @@ import { TextDecoder } from "node:util";
 
 export function decodeUtf8(bytes, label = "UTF-8 input") {
   try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
   } catch {
     throw new Error(`${label} contains invalid UTF-8.`);
   }

@@ -134,7 +134,7 @@ export function validateGlobalManifest(value) {
 
 function decodeDimension(bytes, mediaType) {
   if (mediaType === "application/json") {
-    return parseIJson(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+    return parseIJson(new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes));
   }
   if (mediaType === "text/plain" || mediaType === "text/markdown") {
     return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
@@ -202,7 +202,7 @@ export class GlobalObjectLoader {
       throw new Error("Global manifest SHA-256 mismatch.");
     }
     const manifest = validateGlobalManifest(
-      parseIJson(new TextDecoder("utf-8", { fatal: true }).decode(manifestBytes)),
+      parseIJson(new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(manifestBytes)),
     );
     const requested = dimensions === null
       ? new Set(manifest.dimensions.map((entry) => entry.name))

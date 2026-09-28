@@ -106,7 +106,10 @@ function verifyLocalDimension(entry, localRoot) {
     || entry.media_type === "text/plain"
     || entry.media_type === "text/markdown"
   ) {
-    const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    const text = new TextDecoder("utf-8", {
+      fatal: true,
+      ignoreBOM: entry.media_type === "application/json",
+    }).decode(bytes);
     value = entry.media_type === "application/json" ? parseIJson(text) : text;
   }
   return { bytes, value };
