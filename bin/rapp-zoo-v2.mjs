@@ -300,7 +300,7 @@ function readBoundedLocalFile(file, maximumBytes, label) {
     if (total > maximumBytes) {
       throw new Error(`${label} exceeds its local replay limit.`);
     }
-    return new TextDecoder("utf-8", { fatal: true }).decode(
+    return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(
       bytes.subarray(0, total),
     );
   } finally {

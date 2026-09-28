@@ -362,7 +362,8 @@ async function oneReplica(plan, replica, provider) {
     if (encodedBytes.length > MAX_RESULT_BYTES) {
       throw new Error("simulation result exceeds 64 KiB");
     }
-    const encoded = new TextDecoder("utf-8", { fatal: true }).decode(encodedBytes);
+    const encoded = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
+      .decode(encodedBytes);
     const value = JSON.parse(encoded);
     assertUnprivilegedMachineValue(value);
     if (canonical(value) !== encoded) {

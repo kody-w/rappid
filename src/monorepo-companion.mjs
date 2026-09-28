@@ -109,7 +109,7 @@ export class MonorepoCompanionLoader {
       throw new Error("Monorepo companion manifest failed byte/hash verification.");
     }
     const manifest = validateMonorepoManifest(
-      parseIJson(new TextDecoder("utf-8", { fatal: true }).decode(body)),
+      parseIJson(new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(body)),
     );
     const directory = ensurePrivateDirectory(path.join(this.root, sha256));
     writePrivateBytes(path.join(directory, "MANIFEST.json"), body);
